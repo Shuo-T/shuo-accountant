@@ -30,9 +30,9 @@ export default function Layout({ children, currentPage, onNavigate }: Props) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">黑</span>
+              <span className="text-white font-bold text-sm">朔</span>
             </div>
-            <h1 className="text-xl font-semibold text-slate-800">黑马记账</h1>
+            <h1 className="text-xl font-semibold text-slate-800">朔记</h1>
           </div>
           <div className="text-sm text-slate-500">
             {new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}

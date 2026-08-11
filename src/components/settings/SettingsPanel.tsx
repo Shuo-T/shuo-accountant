@@ -26,14 +26,14 @@ export default function SettingsPanel() {
   const handleExportCSV = async () => {
     const csv = await exportToCSV();
     const now = new Date().toISOString().slice(0, 10);
-    downloadFile(csv, `黑马记账_${now}.csv`, 'text/csv;charset=utf-8');
+    downloadFile(csv, `朔记_${now}.csv`, 'text/csv;charset=utf-8');
   };
 
   // 导出 JSON
   const handleExportJSON = async () => {
     const json = await exportToJson();
     const now = new Date().toISOString().slice(0, 10);
-    downloadFile(json, `黑马记账备份_${now}.json`, 'application/json');
+    downloadFile(json, `朔记备份_${now}.json`, 'application/json');
   };
 
   // 导入 CSV
@@ -377,7 +377,7 @@ export default function SettingsPanel() {
           关于
         </h2>
         <div className="text-sm text-slate-600 space-y-2">
-          <p><strong>黑马记账</strong> v0.1.0</p>
+          <p><strong>朔记</strong> v0.1.0</p>
           <p>一款简洁易用的个人记账工具</p>
           <p>数据存储在浏览器本地，不会上传到服务器</p>
           <p>建议定期导出备份，防止数据丢失</p>

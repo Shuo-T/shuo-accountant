@@ -1,3 +1,3 @@
 fn main() {
-    heima_accountant_lib::run()
+    shuo_accountant_lib::run()
 }

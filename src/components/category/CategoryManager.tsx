@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useCategoryStore } from '../../store';
 import type { Category } from '../../db';
@@ -47,10 +47,11 @@ export default function CategoryManager() {
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState('#64748b');
   const [colorPickerEditingId, setColorPickerEditingId] = useState<string | null>(null);
-  const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [colorPickerPos, setColorPickerPos] = useState<{ x: number; y: number } | null>(null);
 
   const openColorPicker = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
-    pickerButtonRef.current = e.currentTarget;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setColorPickerPos({ x: rect.left + rect.width + 4, y: rect.top - 4 });
     setColorPickerEditingId(colorPickerEditingId === id ? null : id);
   };
 
@@ -100,6 +101,8 @@ export default function CategoryManager() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [colorPickerEditingId]);
+
+  const handleDelete = async (id: string) => {
     if (!confirm('确定删除这个分类吗？')) return;
     await deleteCategory(id);
     await fetchCategories();
@@ -280,34 +283,12 @@ export default function CategoryManager() {
                         className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                         autoFocus
                       />
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setColorPickerOpen(!colorPickerOpen);
-                          }}
-                          className="w-5 h-5 rounded border border-slate-300 transition-all hover:scale-110"
-                          style={{ backgroundColor: editColor }}
-                          title="选择颜色"
-                        />
-                        {colorPickerOpen && (
-                          <div className="absolute left-5 top-0 z-50 bg-white rounded-lg shadow-lg border border-slate-200 p-2 flex gap-1 flex-wrap w-36">
-                            {colorPresets.map((color) => (
-                              <button
-                                key={color}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSaveEdit(cat.id, color);
-                                }}
-                                className={`w-5 h-5 rounded border transition-all hover:scale-110 ${
-                                  editColor === color ? 'border-slate-800' : 'border-transparent'
-                                }`}
-                                style={{ backgroundColor: color }}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openColorPicker(cat.id, e); }}
+                        className="w-5 h-5 rounded border border-slate-300 transition-all hover:scale-110"
+                        style={{ backgroundColor: editColor }}
+                        title="选择颜色"
+                      />
                       <button onClick={() => handleSaveEdit(cat.id)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="保存">
                         <Check className="w-4 h-4" />
                       </button>
@@ -352,7 +333,7 @@ export default function CategoryManager() {
                           className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs flex-shrink-0"
                           style={{ backgroundColor: child.color || cat.color || '#64748b' }}
                         >
-                          {getCategoryIcon(cat.icon)}
+                          {getCategoryIcon(child.icon || cat.icon)}
                         </div>
                         {editingId === child.id ? (
                           <div className="flex items-center gap-1">
@@ -364,34 +345,12 @@ export default function CategoryManager() {
                               className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                               autoFocus
                             />
-                            <div className="relative">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setColorPickerOpen(!colorPickerOpen);
-                                }}
-                                className="w-4 h-4 rounded border border-slate-300 transition-all hover:scale-110"
-                                style={{ backgroundColor: editColor }}
-                                title="选择颜色"
-                              />
-                              {colorPickerOpen && (
-                                <div className="absolute left-4 top-0 z-50 bg-white rounded-lg shadow-lg border border-slate-200 p-1.5 flex gap-1 flex-wrap w-32">
-                                  {colorPresets.map((color) => (
-                                    <button
-                                      key={color}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleSaveEdit(child.id, color);
-                                      }}
-                                      className={`w-4 h-4 rounded border transition-all hover:scale-110 ${
-                                        editColor === color ? 'border-slate-800' : 'border-transparent'
-                                      }`}
-                                      style={{ backgroundColor: color }}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); openColorPicker(child.id, e); }}
+                              className="w-4 h-4 rounded border border-slate-300 transition-all hover:scale-110"
+                              style={{ backgroundColor: editColor }}
+                              title="选择颜色"
+                            />
                             <button onClick={() => handleSaveEdit(child.id)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="保存">
                               <Check className="w-3 h-3" />
                             </button>
@@ -438,12 +397,10 @@ export default function CategoryManager() {
           </div>
         )}
       </div>
-      {colorPickerEditingId && pickerButtonRef.current && createPortal(
+      {colorPickerEditingId && colorPickerPos && createPortal(
         <div className="fixed z-[9999] bg-white rounded-lg shadow-lg border border-slate-200 p-2 flex gap-1 flex-wrap"
-          style={{
-            left: pickerButtonRef.current.getBoundingClientRect().left + pickerButtonRef.current.offsetWidth + 4,
-            top: pickerButtonRef.current.getBoundingClientRect().top - 4,
-          }}
+          style={{ left: colorPickerPos.x, top: colorPickerPos.y }}
+          data-color-picker
           onClick={(e) => e.stopPropagation()}
         >
           {colorPresets.map((color) => (
@@ -463,6 +420,8 @@ export default function CategoryManager() {
         document.body
       )}
     </div>
+  );
+}
 
 // 子组件：添加二级分类
 function AddSubCategory({ parentId, onAdded }: {

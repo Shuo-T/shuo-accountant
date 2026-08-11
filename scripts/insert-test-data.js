@@ -11,7 +11,7 @@ const htmlContent = `
 <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
 <script>
 (async () => {
-  const db = new Dexie('HeiMaAccountantDB');
+  const db = new Dexie('ShuoAccountantDB');
   await db.open();
 
   // 检查是否已有数据

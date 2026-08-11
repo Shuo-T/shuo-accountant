@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>黑马记账 - 测试数据插入器</title>
+  <title>朔记 - 测试数据插入器</title>
   <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -56,14 +56,14 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐴 黑马记账</h1>
+    <h1>🌙 朔记</h1>
     <p>测试数据插入工具</p>
     <button id="insertBtn" onclick="insertTestData()">插入 25 条测试数据</button>
     <div id="result" class="result"></div>
     <div class="info">
       <strong>说明：</strong><br>
       此页面会向 IndexedDB 插入 25 条模拟记账数据，涵盖餐饮、交通、购物等分类。<br>
-      插入后请打开 <a href="http://localhost:1420" target="_blank">黑马记账主应用</a> 查看数据。
+      插入后请打开 <a href="http://localhost:1420" target="_blank">朔记主应用</a> 查看数据。
     </div>
   </div>
 
@@ -75,7 +75,7 @@
       btn.textContent = '插入中...';
 
       try {
-        const db = new Dexie('HeiMaAccountantDB');
+        const db = new Dexie('ShuoAccountantDB');
         await db.open();
 
         const existingCount = await db.expenses.count();

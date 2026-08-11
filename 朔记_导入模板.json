@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "exportedAt": "2026-08-11T00:00:00.000Z",
-  "app": "黑马记账",
+  "app": "朔记",
   "categories": [
     { "id": "cat-dining", "name": "餐饮", "parentId": null, "icon": "UtensilsCrossed", "color": "#ef4444", "sortOrder": 0 },
     { "id": "cat-transport", "name": "交通", "parentId": null, "icon": "Car", "color": "#3b82f6", "sortOrder": 1 },

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStatsStore, useExpenseStore, useCategoryStore } from '../../store';
-import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
-import { PieChart as PieChartIcon, BarChart3, CalendarDays, CalendarRange } from 'lucide-react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, LineChart, Line } from 'recharts';
+import { PieChart as PieChartIcon, BarChart3, CalendarDays, CalendarRange, TrendingUp } from 'lucide-react';
 
 const CATEGORY_COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#22c55e',
@@ -29,10 +29,12 @@ export default function StatsPanel() {
   const startDate = useStatsStore((s) => s.startDate);
   const endDate = useStatsStore((s) => s.endDate);
   const selectedGroupId = useStatsStore((s) => s.selectedGroupId);
+  const selectedCategoryId = useStatsStore((s) => s.selectedCategoryId);
   const setPeriod = useStatsStore((s) => s.setPeriod);
   const setCustomRange = useStatsStore((s) => s.setCustomRange);
   const fetchStats = useStatsStore((s) => s.fetchStats);
   const setGroupFilter = useStatsStore((s) => s.setGroupFilter);
+  const setCategoryFilter = useStatsStore((s) => s.setCategoryFilter);
   const loading = useStatsStore((s) => s.loading);
 
   const [showCustom, setShowCustom] = useState(false);
@@ -142,6 +144,25 @@ export default function StatsPanel() {
     const childNames = new Set(group.children.map((c) => c.name));
     return byCategory.filter((item) => childNames.has(item.name));
   }, [byCategory, selectedGroupId, categoryTree]);
+
+  // 单击二级分类：选中/取消；双击跳转到账单页
+  const handleCategoryClick = (category: { name: string }) => {
+    setCategoryFilter(category.name);
+  };
+
+  const handleCategoryDoubleClick = (category: { name: string }) => {
+    const { startDate: pStart, endDate: pEnd } = useStatsStore.getState();
+    const cats = useCategoryStore.getState().categories;
+    const cat = cats.find((c) => c.name === category.name);
+    const filter: { startDate?: string; endDate?: string; categoryId?: string } = {
+      startDate: pStart || undefined,
+      endDate: pEnd || undefined,
+      categoryId: cat?.id,
+    };
+    const range = pStart && pEnd ? `${pStart} ~ ${pEnd}` : '全部时间';
+    if (!confirm(`当前范围：${range}\n\n是否查看「${category.name}」的记录，跳转到账单页？`)) return;
+    useExpenseStore.getState().applyListFilterAndNavigate(filter);
+  };
 
   useEffect(() => {
     fetchStats();
@@ -256,6 +277,58 @@ export default function StatsPanel() {
         </div>
       </div>
 
+      {/* 支出趋势 */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-crosshair" title="双击柱状/折线点可查看当日账单明细">
+        <h3 className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+          <TrendingUp className="w-4 h-4" />
+          支出趋势
+          <span className="text-xs text-slate-400 font-normal ml-auto">双击查看账单</span>
+        </h3>
+        {daily.length > 0 ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart
+              data={daily}
+              onDoubleClick={(data) => {
+                if (data?.activeLabel) handleChartDoubleClick({ date: String(data.activeLabel) });
+              }}
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                angle={daily.length > 14 ? -30 : 0}
+                textAnchor={daily.length > 14 ? 'end' : 'middle'}
+                height={daily.length > 14 ? 40 : 25}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                tickFormatter={(value: number) => `¥${value}`}
+                width={50}
+              />
+              <Tooltip
+                formatter={(value: unknown) => [`¥${Number(value).toFixed(2)}`, '支出']}
+                labelFormatter={(label: unknown) => label ? `日期：${label}` : ''}
+                contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+              />
+              <Line
+                type="monotone"
+                dataKey="total"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                dot={{ fill: '#3b82f6', strokeWidth: 1.5, r: 3 }}
+                activeDot={{ r: 5, fill: '#3b82f6' }}
+                name="支出"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-48 flex items-center justify-center text-slate-400">
+            暂无数据
+          </div>
+        )}
+      </div>
+
       {/* 大类占比 */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
         <div className="flex items-center justify-between mb-1">
@@ -287,10 +360,7 @@ export default function StatsPanel() {
                   // 单击选中/取消，双击跳转到账单页
                   onClick={(data: any) => handleGroupClick(data.payload)}
                   onDoubleClick={(data: any) => handleGroupDoubleClick(data.payload)}
-                  label={({ name, percent }) => {
-                    if (!name || !percent) return '';
-                    return `${name} ${(percent * 100).toFixed(0)}%`;
-                  }}
+                  label={undefined}
                   labelLine={false}
                   stroke="#fff"
                   strokeWidth={2}
@@ -359,17 +429,20 @@ export default function StatsPanel() {
       </div>
 
       {/* 分类占比 */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-crosshair" title="双击图表可查看账单明细">
-        <h3 className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-          <PieChartIcon className="w-4 h-4" />
-          分类占比
-          <span className="text-xs text-slate-400 font-normal ml-auto">双击查看账单</span>
-          {selectedGroupId && (
-            <span className="text-xs text-slate-400 font-normal">
-              · 仅展示「{categoryTree.get(selectedGroupId)?.name}」子分类
-            </span>
-          )}
-        </h3>
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+            <PieChartIcon className="w-4 h-4" />
+            分类占比
+          </h3>
+          <div className="flex items-center gap-2">
+            {selectedGroupId && (
+              <span className="text-xs text-slate-400 font-normal">
+                * 仅展示「{categoryTree.get(selectedGroupId)?.name}」子分类
+              </span>
+            )}
+          </div>
+        </div>
         {filteredCategories.length > 0 ? (
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={250}>
@@ -382,46 +455,70 @@ export default function StatsPanel() {
                   outerRadius={100}
                   paddingAngle={3}
                   dataKey="total"
-                  onDoubleClick={((data: any) => {
-                    if (data?.name) handleChartDoubleClick(data);
-                  }) as any}
-                  label={({ name, percent }: { name?: string; percent?: number }) => {
-                    if (!name || !percent) return '';
-                    return `${name} ${(percent * 100).toFixed(0)}%`;
-                  }}
+                  label={undefined}
                   labelLine={false}
+                  stroke="#fff"
+                  strokeWidth={2}
+                  onClick={(data: any) => data?.payload?.name && handleCategoryClick({ name: data.payload.name })}
+                  onDoubleClick={(data: any) => data?.payload?.name && handleCategoryDoubleClick({ name: data.payload.name })}
                 >
-                  {filteredCategories.map((_entry: unknown, index: number) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
-                    />
-                  ))}
+                  {filteredCategories.map((item, index) => {
+                    const isSelected = selectedCategoryId === item.name;
+                    return (
+                      <Cell
+                        key={item.name}
+                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                        opacity={isSelected ? 1 : 0.55}
+                        stroke="#fff"
+                        strokeWidth={isSelected ? 3 : 2}
+                      />
+                    );
+                  })}
                 </Pie>
                 <Tooltip
                   formatter={(value: unknown) => `¥${Number(value).toFixed(2)}`}
+                  labelFormatter={(label: unknown) => {
+                    const item = filteredCategories.find(g => g.name === label);
+                    if (!item || !summary?.total) return label as string;
+                    return `${label}  ·  ${(item.total / summary.total * 100).toFixed(1)}%`;
+                  }}
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-2 max-h-[250px] overflow-y-auto">
-              {filteredCategories.map((item, index) => (
-                <div key={item.name} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }}
-                    />
-                    <span className="text-slate-700 truncate max-w-[120px]">{item.name}</span>
+              {filteredCategories.map((item) => {
+                const isSelected = selectedCategoryId === item.name;
+                const colorIndex = filteredCategories.findIndex(g => g.name === item.name);
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => handleCategoryClick(item)}
+                    onDoubleClick={() => handleCategoryDoubleClick(item)}
+                    className={`flex items-center justify-between text-sm px-2 py-1.5 rounded-lg cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-slate-100 ring-1 ring-slate-400'
+                        : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: CATEGORY_COLORS[colorIndex % CATEGORY_COLORS.length] }}
+                      />
+                      <span className={`truncate ${isSelected ? 'font-medium text-slate-800' : 'text-slate-700'}`}>
+                        {item.name}
+                      </span>
+                    </div>
+                    <div className="text-right flex-shrink-0 ml-2">
+                      <span className="font-medium text-slate-800">¥{item.total.toFixed(2)}</span>
+                      <span className="text-xs text-slate-500 ml-2">
+                        {((item.total / (summary?.total || 1)) * 100).toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="font-medium text-slate-800">¥{item.total.toFixed(2)}</span>
-                    <span className="text-xs text-slate-500 ml-2">
-                      {((item.total / (summary?.total || 1)) * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -429,6 +526,9 @@ export default function StatsPanel() {
             暂无数据
           </div>
         )}
+        <div className="mt-2 text-xs text-slate-400">
+          单击选中/取消分类，双击列表数据查看账单
+        </div>
       </div>
 
       {/* 分类支出柱状图 */}
@@ -439,7 +539,7 @@ export default function StatsPanel() {
           <span className="text-xs text-slate-400 font-normal ml-auto">双击查看账单</span>
           {selectedGroupId && (
             <span className="text-xs text-slate-400 font-normal">
-              · 仅展示「{categoryTree.get(selectedGroupId)?.name}」子分类
+              * 仅展示「{categoryTree.get(selectedGroupId)?.name}」子分类
             </span>
           )}
         </h3>

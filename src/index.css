@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 黑马记账 - Slate 中性灰主题 */
+/* 朔记 - Slate 中性灰主题 */
 @theme {
   --color-primary: #64748b;       /* slate-500 */
   --color-primary-hover: #475569; /* slate-600 */

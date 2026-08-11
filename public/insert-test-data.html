@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>插入测试数据 - 黑马记账</title>
+  <title>插入测试数据 - 朔记</title>
   <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -72,7 +72,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>🐴 黑马记账</h1>
+    <h1>🌙 朔记</h1>
     <p class="subtitle">测试数据插入工具</p>
 
     <button class="btn" id="insertBtn" onclick="insertTestData()">
@@ -96,12 +96,12 @@
       </ul>
     </div>
 
-    <a href="http://localhost:1420" class="back-link">← 返回黑马记账</a>
+    <a href="http://localhost:1420" class="back-link">← 返回朔记</a>
   </div>
 
   <script>
     // 定义数据库模式（必须在 open 之前）
-    const db = new Dexie('HeiMaAccountantDB');
+    const db = new Dexie('ShuoAccountantDB');
     db.version(1).stores({
       categories: 'id, name, parentId, sortOrder',
       expenses: 'id, categoryId, createdAt, [categoryId+createdAt]'

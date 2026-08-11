@@ -52,12 +52,12 @@ export interface Summary {
 
 // ─── 数据库定义 ──────────────────────────────────────────────────────────────
 
-class HeiMaDB extends Dexie {
+class ShuoAccountantDB extends Dexie {
   categories!: Dexie.Table<Category, string>;
   expenses!: Dexie.Table<ExpenseRaw, string>;
 
   constructor() {
-    super('HeiMaAccountantDB');
+    super('ShuoAccountantDB');
     this.version(1).stores({
       categories: 'id, name, parentId, sortOrder',
       expenses: 'id, categoryId, createdAt, [categoryId+createdAt]',
@@ -67,7 +67,7 @@ class HeiMaDB extends Dexie {
 
 // ─── 数据库实例 ──────────────────────────────────────────────────────────────
 
-export const db = new HeiMaDB();
+export const db = new ShuoAccountantDB();
 
 // ─── 种子数据 ────────────────────────────────────────────────────────────────
 

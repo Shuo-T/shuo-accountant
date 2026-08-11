@@ -150,10 +150,12 @@ interface StatsState {
   startDate: string;
   endDate: string;
   selectedGroupId: string | null;
+  selectedCategoryId: string | null;
   setPeriod: (period: Period) => void;
   setCustomRange: (startDate: string, endDate: string) => void;
   fetchStats: () => Promise<void>;
   setGroupFilter: (id: string | null) => void;
+  setCategoryFilter: (id: string | null) => void;
 }
 
 function computeRange(period: Period, customStart?: string, customEnd?: string): { startDate: string; endDate: string } {
@@ -212,6 +214,7 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   startDate: '',
   endDate: '',
   selectedGroupId: null,
+  selectedCategoryId: null,
 
   setPeriod: (period) => {
     const range = computeRange(period, get().startDate, get().endDate);
@@ -246,5 +249,9 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   setGroupFilter: (id) => {
     set((s) => ({ selectedGroupId: s.selectedGroupId === id ? null : id }));
+  },
+
+  setCategoryFilter: (id) => {
+    set((s) => ({ selectedCategoryId: s.selectedCategoryId === id ? null : id }));
   },
 }));

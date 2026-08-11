@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useCategoryStore } from '../../store';
 import type { Category } from '../../db';
@@ -42,13 +42,13 @@ export default function CategoryPage() {
   const [newParentId, setNewParentId] = useState<string | null>(null);
   const [newColor, setNewColor] = useState('#64748b');
 
-  const [editName, setEditName] = useState('');
-  const [editColor, setEditColor] = useState('#64748b');
+  const [editingStates, setEditingStates] = useState<Record<string, { name: string; color: string }>>({});
   const [colorPickerEditingId, setColorPickerEditingId] = useState<string | null>(null);
-  const pickerButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [colorPickerPos, setColorPickerPos] = useState<{ x: number; y: number } | null>(null);
 
   const openColorPicker = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
-    pickerButtonRef.current = e.currentTarget;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setColorPickerPos({ x: rect.left + rect.width + 4, y: rect.top - 4 });
     setColorPickerEditingId(colorPickerEditingId === id ? null : id);
   };
 
@@ -82,11 +82,21 @@ export default function CategoryPage() {
   };
 
   const handleSaveEdit = async (id: string, newColor?: string) => {
-    if (!editName.trim()) return;
-    await updateCategory(id, { name: editName.trim(), color: newColor ?? editColor });
+    const state = editingStates[id];
+    if (!state?.name.trim()) return;
+    await updateCategory(id, { name: state.name.trim(), color: newColor ?? state.color });
     setEditingId(null);
     setColorPickerEditingId(null);
     await fetchCategories();
+  };
+
+  const startEdit = (id: string, name: string, color: string) => {
+    setEditingId(id);
+    setEditingStates(s => ({ ...s, [id]: { name, color } }));
+  };
+
+  const updateEditState = (id: string, updates: Partial<{ name: string; color: string }>) => {
+    setEditingStates(s => ({ ...s, [id]: { ...s[id], ...updates } }));
   };
 
   useEffect(() => {
@@ -98,6 +108,8 @@ export default function CategoryPage() {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [colorPickerEditingId]);
+
+  const handleDelete = async (id: string) => {
     if (!confirm('确定删除这个分类吗？')) return;
     await deleteCategory(id);
     await fetchCategories();
@@ -272,17 +284,16 @@ export default function CategoryPage() {
                     <div className="flex items-center gap-1">
                       <input
                         type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
+                        value={editingStates[cat.id]?.name ?? ''}
+                        onChange={(e) => updateEditState(cat.id, { name: e.target.value })}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(cat.id); }}
                         className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                         autoFocus
                       />
                       <button
-                        ref={pickerButtonRef}
                         onClick={(e) => { e.stopPropagation(); openColorPicker(cat.id, e); }}
                         className="w-5 h-5 rounded border border-slate-300 transition-all hover:scale-110"
-                        style={{ backgroundColor: editColor }}
+                        style={{ backgroundColor: editingStates[cat.id]?.color ?? '#64748b' }}
                         title="选择颜色"
                       />
                       <button onClick={() => handleSaveEdit(cat.id)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="保存">
@@ -298,9 +309,7 @@ export default function CategoryPage() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setEditingId(cat.id);
-                      setEditName(cat.name);
-                      setEditColor(cat.color || '#64748b');
+                      startEdit(cat.id, cat.name, cat.color || '#64748b');
                     }}
                     className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                     title="编辑"
@@ -333,23 +342,22 @@ export default function CategoryPage() {
                           className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs flex-shrink-0"
                           style={{ backgroundColor: child.color || cat.color || '#64748b' }}
                         >
-                          {getCategoryIcon(cat.icon)}
+                          {getCategoryIcon(child.icon || cat.icon)}
                         </div>
                         {editingId === child.id ? (
                           <div className="flex items-center gap-1">
                             <input
                               type="text"
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
+                              value={editingStates[child.id]?.name ?? ''}
+                              onChange={(e) => updateEditState(child.id, { name: e.target.value })}
                               onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(child.id); }}
                               className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                               autoFocus
                             />
                             <button
-                              ref={pickerButtonRef}
                               onClick={(e) => { e.stopPropagation(); openColorPicker(child.id, e); }}
                               className="w-4 h-4 rounded border border-slate-300 transition-all hover:scale-110"
-                              style={{ backgroundColor: editColor }}
+                              style={{ backgroundColor: editingStates[child.id]?.color ?? '#64748b' }}
                               title="选择颜色"
                             />
                             <button onClick={() => handleSaveEdit(child.id)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="保存">
@@ -364,8 +372,7 @@ export default function CategoryPage() {
                         <button
                           onClick={() => {
                             setEditingId(child.id);
-                            setEditName(child.name);
-                            setEditColor(child.color || cat.color || '#64748b');
+                            setEditingStates(s => ({ ...s, [child.id]: { name: child.name, color: child.color || cat.color || '#64748b' } }));
                           }}
                           className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors"
                         >
@@ -398,12 +405,10 @@ export default function CategoryPage() {
           </div>
         )}
       </div>
-      {colorPickerEditingId && pickerButtonRef.current && createPortal(
+      {colorPickerEditingId && colorPickerPos && createPortal(
         <div className="fixed z-[9999] bg-white rounded-lg shadow-lg border border-slate-200 p-2 flex gap-1 flex-wrap"
-          style={{
-            left: pickerButtonRef.current.getBoundingClientRect().left + pickerButtonRef.current.offsetWidth + 4,
-            top: pickerButtonRef.current.getBoundingClientRect().top - 4,
-          }}
+          style={{ left: colorPickerPos.x, top: colorPickerPos.y }}
+          data-color-picker
           onClick={(e) => e.stopPropagation()}
         >
           {colorPresets.map((color) => (
@@ -414,7 +419,7 @@ export default function CategoryPage() {
                 handleSaveEdit(colorPickerEditingId, color);
               }}
               className={`w-5 h-5 rounded border transition-all hover:scale-110 ${
-                editColor === color ? 'border-slate-800' : 'border-transparent'
+                editingStates[colorPickerEditingId]?.color === color ? 'border-slate-800' : 'border-transparent'
               }`}
               style={{ backgroundColor: color }}
             />
@@ -423,6 +428,8 @@ export default function CategoryPage() {
         document.body
       )}
     </div>
+  );
+}
 
 // 子组件：添加二级分类
 function AddSubCategory({ parentId, onAdded }: {

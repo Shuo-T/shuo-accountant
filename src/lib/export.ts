@@ -60,7 +60,7 @@ export async function exportToJson(): Promise<string> {
   const data = {
     version: '1.0',
     exportedAt: new Date().toISOString(),
-    app: '黑马记账',
+    app: '朔记',
     categories,
     expenses,
     summary: {

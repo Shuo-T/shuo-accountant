@@ -1,9 +1,9 @@
-// 黑马记账 - 快速测试数据生成器
+// 朔记 - 快速测试数据生成器
 // 在浏览器控制台运行此代码
 
 (async function insertTestData() {
   try {
-    const db = new Dexie('HeiMaAccountantDB');
+    const db = new Dexie('ShuoAccountantDB');
     await db.open();
 
     const existingCount = await db.expenses.count();

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>数据库调试 - 黑马记账</title>
+  <title>数据库调试 - 朔记</title>
   <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -107,7 +107,7 @@
 </head>
 <body>
   <div class="container">
-    <a href="http://localhost:1420" class="back-link">← 返回黑马记账</a>
+    <a href="http://localhost:1420" class="back-link">← 返回朔记</a>
     <h1>🔍 数据库调试工具</h1>
 
     <div class="stats-grid">
@@ -164,7 +164,7 @@
   </div>
 
   <script>
-    const db = new Dexie('HeiMaAccountantDB');
+    const db = new Dexie('ShuoAccountantDB');
     db.version(1).stores({
       categories: 'id, name, parentId, sortOrder',
       expenses: 'id, categoryId, createdAt, [categoryId+createdAt]'

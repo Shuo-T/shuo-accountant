@@ -1,7 +1,11 @@
-# Tauri + React + Typescript
+# 朔记
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+一款简洁易用的个人记账工具，数据存储在浏览器本地，不会上传到服务器。
 
-## Recommended IDE Setup
+## 功能特性
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+- 快速记账，支持多级分类
+- 详细的账单明细与筛选功能
+- 丰富的数据统计图表
+- 灵活的分页浏览
+- 数据导出/导入备份
