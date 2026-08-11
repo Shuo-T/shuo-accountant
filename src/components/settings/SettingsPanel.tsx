@@ -25,14 +25,14 @@ export default function SettingsPanel() {
   // 导出 CSV
   const handleExportCSV = async () => {
     const csv = await exportToCSV();
-    const now = new Date().toISOString().slice(0, 10);
+    const now = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
     downloadFile(csv, `朔记_${now}.csv`, 'text/csv;charset=utf-8');
   };
 
   // 导出 JSON
   const handleExportJSON = async () => {
     const json = await exportToJson();
-    const now = new Date().toISOString().slice(0, 10);
+    const now = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
     downloadFile(json, `朔记备份_${now}.json`, 'application/json');
   };
 

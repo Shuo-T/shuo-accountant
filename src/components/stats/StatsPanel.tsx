@@ -545,7 +545,7 @@ export default function StatsPanel() {
         </h3>
         {filteredCategories.length > 0 ? (
           <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={filteredCategories.slice(0, 8)}>
+            <BarChart data={filteredCategories}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="name"
