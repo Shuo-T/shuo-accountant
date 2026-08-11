@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>数据库调试 - 黑马记账</title>
+  <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 { color: #1e293b; margin-bottom: 20px; }
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h2 { color: #475569; margin-bottom: 15px; font-size: 18px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+      background: #f1f5f9;
+      font-weight: 600;
+      color: #475569;
+    }
+    tr:hover { background: #f8fafc; }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-purple { background: #f3e8ff; color: #7e22ce; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    .stat-card h3 {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 8px;
+    }
+    .stat-card .value {
+      font-size: 28px;
+      font-weight: bold;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    .btn-primary { background: #64748b; color: white; }
+    .btn-primary:hover { background: #475569; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover { background: #16a34a; }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      color: #64748b;
+      text-decoration: none;
+      padding: 10px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+    }
+    .back-link:hover { border-color: #64748b; color: #1e293b; }
+    pre {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="http://localhost:1420" class="back-link">← 返回黑马记账</a>
+    <h1>🔍 数据库调试工具</h1>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>分类数量</h3>
+        <div class="value" id="catCount">-</div>
+      </div>
+      <div class="stat-card">
+        <h3>支出数量</h3>
+        <div class="value" id="expenseCount">-</div>
+      </div>
+      <div class="stat-card">
+        <h3>总支出</h3>
+        <div class="value" id="totalAmount">-</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>📊 统计查询测试</h2>
+      <button class="btn btn-primary" onclick="testStats()">运行统计查询</button>
+      <pre id="statsResult">点击"运行统计查询"查看结果...</pre>
+    </div>
+
+    <div class="section">
+      <h2>📁 分类列表 (前10条)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>名称</th>
+            <th>父分类</th>
+            <th>排序</th>
+          </tr>
+        </thead>
+        <tbody id="categoryTable"></tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>💰 支出列表 (前20条)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>金额</th>
+            <th>分类ID</th>
+            <th>日期</th>
+            <th>备注</th>
+          </tr>
+        </thead>
+        <tbody id="expenseTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const db = new Dexie('HeiMaAccountantDB');
+    db.version(1).stores({
+      categories: 'id, name, parentId, sortOrder',
+      expenses: 'id, categoryId, createdAt, [categoryId+createdAt]'
+    });
+
+    async function loadDebugInfo() {
+      try {
+        await db.open();
+
+        // 加载统计数据
+        const catCount = await db.categories.count();
+        const expenseCount = await db.expenses.count();
+        const expenses = await db.expenses.toArray();
+        const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+        document.getElementById('catCount').textContent = catCount;
+        document.getElementById('expenseCount').textContent = expenseCount;
+        document.getElementById('totalAmount').textContent = '¥' + totalAmount.toFixed(2);
+
+        // 加载分类列表
+        const categories = await db.categories.toArray();
+        const catTable = document.getElementById('categoryTable');
+        catTable.innerHTML = categories.slice(0, 10).map(c => `
+          <tr>
+            <td><code>${c.id}</code></td>
+            <td>${c.name}</td>
+            <td>${c.parentId || '<span class="badge badge-green">一级</span>'}</td>
+            <td>${c.sortOrder}</td>
+          </tr>
+        `).join('');
+
+        // 加载支出列表
+        const expTable = document.getElementById('expenseTable');
+        expTable.innerHTML = expenses.slice(0, 20).map(e => `
+          <tr>
+            <td><code>${(e.id || '').substring(0, 8)}...</code></td>
+            <td>¥${e.amount.toFixed(2)}</td>
+            <td><code>${e.categoryId}</code></td>
+            <td>${new Date(e.createdAt).toLocaleDateString('zh-CN')}</td>
+            <td>${e.remark || '-'}</td>
+          </tr>
+        `).join('');
+
+      } catch (err) {
+        console.error('加载调试信息失败:', err);
+        alert('加载失败: ' + err.message);
+      }
+    }
+
+    async function testStats() {
+      const result = document.getElementById('statsResult');
+      result.textContent = '查询中...';
+
+      try {
+        const now = new Date();
+        const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+        const endDate = now.toISOString().slice(0, 10);
+
+        // 测试 getExpenses
+        console.log('测试 getExpenses...');
+        let expenses = await db.expenses.toArray();
+        console.log('全部支出数量:', expenses.length);
+
+        // 测试日期范围查询
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        const filtered = await db.expenses.where('createdAt').between(start, end).toArray();
+        console.log('本月支出数量:', filtered.length);
+
+        // 计算每日统计
+        const dailyMap = new Map();
+        for (const e of filtered) {
+          const date = e.createdAt.slice(0, 10);
+          dailyMap.set(date, (dailyMap.get(date) || 0) + e.amount);
+        }
+        const dailyStats = Array.from(dailyMap.entries())
+          .map(([date, total]) => ({ date, total }))
+          .sort((a, b) => a.date.localeCompare(b.date));
+        console.log('每日统计:', dailyStats);
+
+        // 计算分类统计
+        const categories = await db.categories.toArray();
+        const catMap = new Map(categories.map(c => [c.id, c]));
+        const categoryMap = new Map();
+        for (const e of filtered) {
+          const cat = catMap.get(e.categoryId);
+          if (cat) {
+            const existing = categoryMap.get(e.categoryId) || { name: cat.name, total: 0, color: cat.color };
+            categoryMap.set(e.categoryId, { ...existing, total: existing.total + e.amount });
+          }
+        }
+        const categoryStats = Array.from(categoryMap.values())
+          .sort((a, b) => b.total - a.total);
+        console.log('分类统计:', categoryStats);
+
+        const output = `
+📊 统计查询测试结果
+
+📁 数据库状态:
+  - 分类总数: ${await db.categories.count()}
+  - 支出总数: ${await db.expenses.count()}
+
+📅 本月支出 (${startDate} ~ ${endDate}):
+  - 记录数: ${filtered.length}
+  - 总支出: ¥${filtered.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+
+📈 每日统计:
+${dailyStats.map(d => `  ${d.date}: ¥${d.total.toFixed(2)}`).join('\n')}
+
+📊 分类统计:
+${categoryStats.map(c => `  ${c.name}: ¥${c.total.toFixed(2)}`).join('\n')}
+
+✅ 查询成功！返回到统计页面查看图表。
+        `;
+        result.textContent = output;
+      } catch (err) {
+        result.textContent = '❌ 查询失败: ' + err.message;
+        console.error('统计查询失败:', err);
+      }
+    }
+
+    // 页面加载时自动刷新
+    loadDebugInfo();
+
+    // 每5秒自动刷新
+    setInterval(loadDebugInfo, 5000);
+  </script>
+</body>
+</html>

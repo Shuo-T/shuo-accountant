@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>黑马记账 - 测试数据插入器</title>
+  <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      padding: 40px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+    h1 { color: #1e293b; margin-bottom: 8px; }
+    p { color: #64748b; margin-bottom: 24px; }
+    button {
+      width: 100%;
+      padding: 12px 24px;
+      background: #64748b;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover { background: #475569; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .result {
+      margin-top: 20px;
+      padding: 16px;
+      border-radius: 8px;
+      display: none;
+    }
+    .result.success { display: block; background: #dcfce7; color: #166534; }
+    .result.error { display: block; background: #fee2e2; color: #991b1b; }
+    .info {
+      margin-top: 24px;
+      padding: 16px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🐴 黑马记账</h1>
+    <p>测试数据插入工具</p>
+    <button id="insertBtn" onclick="insertTestData()">插入 25 条测试数据</button>
+    <div id="result" class="result"></div>
+    <div class="info">
+      <strong>说明：</strong><br>
+      此页面会向 IndexedDB 插入 25 条模拟记账数据，涵盖餐饮、交通、购物等分类。<br>
+      插入后请打开 <a href="http://localhost:1420" target="_blank">黑马记账主应用</a> 查看数据。
+    </div>
+  </div>
+
+  <script>
+    async function insertTestData() {
+      const btn = document.getElementById('insertBtn');
+      const result = document.getElementById('result');
+      btn.disabled = true;
+      btn.textContent = '插入中...';
+
+      try {
+        const db = new Dexie('HeiMaAccountantDB');
+        await db.open();
+
+        const existingCount = await db.expenses.count();
+        if (existingCount > 0) {
+          result.className = 'result error';
+          result.textContent = '已有 ' + existingCount + ' 条记录，如需重新插入请先清空数据库: db.expenses.clear()';
+          btn.disabled = false;
+          btn.textContent = '插入测试数据';
+          return;
+        }
+
+        const categories = await db.categories.toArray();
+        const subCategories = categories.filter(c => c.parentId !== null);
+
+        const testData = [
+          { amount: 25.5, subId: 'sub-lunch', remark: '公司食堂' },
+          { amount: 12.0, subId: 'sub-bus', remark: '上班公交' },
+          { amount: 45.0, subId: 'sub-dinner', remark: '和朋友吃饭' },
+          { amount: 8.0, subId: 'sub-phone', remark: '话费充值' },
+          { amount: 35.0, subId: 'sub-snack', remark: '奶茶+蛋糕' },
+          { amount: 18.0, subId: 'sub-breakfast', remark: '早餐' },
+          { amount: 68.0, subId: 'sub-clothing', remark: 'T恤' },
+          { amount: 22.0, subId: 'sub-subway', remark: '通勤' },
+          { amount: 15.0, subId: 'sub-movie', remark: '电影票' },
+          { amount: 5.0, subId: 'sub-internet', remark: '宽带续费' },
+          { amount: 280.0, subId: 'sub-rent', remark: '房租' },
+          { amount: 156.0, subId: 'sub-electronics', remark: '蓝牙耳机' },
+          { amount: 88.0, subId: 'sub-book', remark: '《三体》套装' },
+          { amount: 45.0, subId: 'sub-utility', remark: '电费' },
+          { amount: 30.0, subId: 'sub-taxi', remark: '打车回家' },
+          { amount: 120.0, subId: 'sub-course', remark: '在线课程' },
+          { amount: 65.0, subId: 'sub-game', remark: '游戏充值' },
+          { amount: 200.0, subId: 'sub-medicine', remark: '感冒药' },
+          { amount: 99.0, subId: 'sub-travel', remark: '景点门票' },
+          { amount: 15.0, subId: 'sub-daily', remark: '抽纸' },
+          { amount: 56.0, subId: 'sub-taxi', remark: '打车' },
+          { amount: 38.0, subId: 'sub-bike', remark: '共享单车月卡' },
+          { amount: 75.0, subId: 'sub-daily', remark: '洗衣液' },
+          { amount: 128.0, subId: 'sub-clothing', remark: '鞋子' },
+          { amount: 25.0, subId: 'sub-checkup', remark: '体检' },
+        ];
+
+        const now = new Date();
+        const expenses = testData.map((item, index) => {
+          const date = new Date(now);
+          date.setDate(date.getDate() - Math.floor(index / 4));
+          date.setHours(7 + Math.floor(Math.random() * 16), Math.floor(Math.random() * 60));
+          return {
+            amount: item.amount,
+            categoryId: item.subId,
+            remark: item.remark,
+            createdAt: date.toISOString(),
+          };
+        });
+
+        await db.expenses.bulkAdd(expenses);
+
+        result.className = 'result success';
+        result.textContent = '✅ 测试数据插入成功！共 ' + expenses.length + ' 条记录';
+        btn.textContent = '插入完成';
+      } catch (err) {
+        result.className = 'result error';
+        result.textContent = '❌ 插入失败: ' + err.message;
+        btn.disabled = false;
+        btn.textContent = '重试';
+      }
+    }
+  </script>
+</body>
+</html>
