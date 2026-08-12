@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useExpenseStore, useCategoryStore } from '../../store';
 import type { Category } from '../../db';
-import { Trash2, MoreHorizontal, UtensilsCrossed, Car, ShoppingBag, Home, Film, HeartPulse, GraduationCap, Smartphone } from 'lucide-react';
+import { Trash2, MoreHorizontal, UtensilsCrossed, Car, ShoppingBag, Home, Film, HeartPulse, GraduationCap, Smartphone, Search } from 'lucide-react';
 
 // Lucide 图标名称 → 组件的映射
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -204,7 +204,8 @@ export default function ExpenseList() {
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
-            🔍 筛选
+            <Search className="w-4 h-4" />
+            筛选
           </button>
         </div>
       </div>

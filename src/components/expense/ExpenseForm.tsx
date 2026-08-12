@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PlusCircle } from 'lucide-react';
 import { useCategoryStore, useExpenseStore } from '../../store';
 import type { Category } from '../../db';
 
@@ -69,7 +70,9 @@ export default function ExpenseForm() {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">💰 记一笔</h2>
+      <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        <PlusCircle className="w-5 h-5" />记一笔
+      </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
