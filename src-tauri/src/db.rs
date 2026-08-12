@@ -4,12 +4,22 @@ use std::path::PathBuf;
 /// 全局 SQLite 连接池（线程安全）
 pub type DbPool = tokio::sync::Mutex<SqlitePool>;
 
-/// 获取数据库文件路径
+/// 获取数据库文件路径（跨平台兼容）
 fn get_db_path() -> PathBuf {
-    // 使用当前位置的数据库文件（开发时方便调试）
-    std::env::current_dir()
-        .unwrap_or_default()
-        .join("app.db")
+    // 使用应用数据目录（Android、桌面端都兼容）
+    let base_dir = if let Some(dir) = dirs::data_local_dir() {
+        // Windows: C:\Users\xxx\AppData\Local
+        // macOS: ~/Library/Application Support
+        // Linux: ~/.local/share
+        dir
+    } else {
+        // 回退到当前目录（开发调试用）
+        std::env::current_dir().unwrap_or_default()
+    };
+
+    let app_dir = base_dir.join("heima-accountant");
+    std::fs::create_dir_all(&app_dir).expect("创建数据目录失败");
+    app_dir.join("app.db")
 }
 
 /// 初始化数据库连接池，并执行所有迁移
