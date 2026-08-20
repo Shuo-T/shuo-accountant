@@ -1,12 +1,17 @@
 import { useState } from 'react';
 import { PlusCircle } from 'lucide-react';
-import { useCategoryStore, useExpenseStore } from '../../store';
-import type { Category } from '../../db';
+import { useCategoryStore, useTransactionStore } from '../../store';
+import type { Category, TransactionType } from '../../db';
 
 export default function ExpenseForm() {
+  return <TransactionForm />;
+}
+
+function TransactionForm() {
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+  const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(today);
   const [level1Id, setLevel1Id] = useState('');
@@ -15,18 +20,21 @@ export default function ExpenseForm() {
   const [error, setError] = useState('');
 
   const categories = useCategoryStore((s) => s.categories);
-  const addExpense = useExpenseStore((s) => s.addExpense);
-  const fetchExpenses = useExpenseStore((s) => s.fetchExpenses);
+  const addTransaction = useTransactionStore((s) => s.addTransaction);
+  const fetchTransactions = useTransactionStore((s) => s.fetchTransactions);
 
-  // 一级分类
-  const level1 = categories.filter((c: Category) => !c.parentId);
-  // 二级分类
-  const level2 = categories.filter((c: Category) => c.parentId !== null);
+  const level1 = categories.filter((c: Category) => !c.parentId && c.type === type);
+  const level2 = categories.filter((c: Category) => c.parentId !== null && c.type === type);
 
-  // 当前选中一级分类下的二级分类
   const currentLevel2 = level1Id
     ? level2.filter((c: Category) => c.parentId === level1Id)
     : [];
+
+  const handleTypeChange = (newType: TransactionType) => {
+    setType(newType);
+    setLevel1Id('');
+    setLevel2Id('');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +58,9 @@ export default function ExpenseForm() {
     }
 
     try {
-      await addExpense({
+      await addTransaction({
         amount: numAmount,
+        type,
         categoryId,
         remark,
         createdAt: date + 'T00:00:00.000Z',
@@ -61,18 +70,48 @@ export default function ExpenseForm() {
       setLevel1Id('');
       setLevel2Id('');
       setRemark('');
-      await fetchExpenses();
+      await fetchTransactions();
     } catch (err) {
       setError('添加失败，请重试');
       console.error(err);
     }
   };
 
+  const isExpense = type === 'expense';
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
       <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
         <PlusCircle className="w-5 h-5" />记一笔
       </h2>
+
+      {/* 类型切换 */}
+      <div className="flex rounded-lg bg-slate-100 p-1 mb-4">
+        <button
+          type="button"
+          onClick={() => handleTypeChange('expense')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${
+            isExpense
+              ? 'bg-red-500 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          <span className="text-base">↓</span>
+          支出
+        </button>
+        <button
+          type="button"
+          onClick={() => handleTypeChange('income')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${
+            !isExpense
+              ? 'bg-green-500 text-white shadow-sm'
+              : 'text-slate-600 hover:text-slate-800'
+          }`}
+        >
+          <span className="text-base">↑</span>
+          收入
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -99,12 +138,14 @@ export default function ExpenseForm() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-600 mb-1">一级分类</label>
+          <label className="block text-sm font-medium text-slate-600 mb-1">
+            {isExpense ? '支出' : '收入'}一级分类
+          </label>
           <select
             value={level1Id}
             onChange={(e) => {
               setLevel1Id(e.target.value);
-              setLevel2Id(''); // 重置二级分类
+              setLevel2Id('');
             }}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
           >
@@ -144,7 +185,7 @@ export default function ExpenseForm() {
             type="text"
             value={remark}
             onChange={(e) => setRemark(e.target.value)}
-            placeholder="例如：午餐、打车回家..."
+            placeholder={`例如：${isExpense ? '午餐、打车回家...' : '月薪、兼职收入...'}`}
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
           />
         </div>
@@ -153,9 +194,13 @@ export default function ExpenseForm() {
 
         <button
           type="submit"
-          className="w-full bg-slate-600 hover:bg-slate-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+          className={`w-full font-medium py-2 px-4 rounded-lg transition-colors ${
+            isExpense
+              ? 'bg-red-500 hover:bg-red-600 text-white'
+              : 'bg-green-500 hover:bg-green-600 text-white'
+          }`}
         >
-          确认记账
+          确认{isExpense ? '记账' : '入账'}
         </button>
       </form>
     </div>

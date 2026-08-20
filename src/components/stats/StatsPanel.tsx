@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useStatsStore, useExpenseStore, useCategoryStore } from '../../store';
+import { useState, useEffect, useMemo } from 'react';
+import { useStatsStore, useTransactionStore, useCategoryStore } from '../../store';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar, LineChart, Line } from 'recharts';
 import { PieChart as PieChartIcon, BarChart3, CalendarDays, CalendarRange, TrendingUp } from 'lucide-react';
 
@@ -30,49 +30,45 @@ export default function StatsPanel() {
   const endDate = useStatsStore((s) => s.endDate);
   const selectedGroupId = useStatsStore((s) => s.selectedGroupId);
   const selectedCategoryId = useStatsStore((s) => s.selectedCategoryId);
+  const linesVisible = useStatsStore((s) => s.linesVisible);
+  const chartType = useStatsStore((s) => s.chartType);
   const setPeriod = useStatsStore((s) => s.setPeriod);
   const setCustomRange = useStatsStore((s) => s.setCustomRange);
   const fetchStats = useStatsStore((s) => s.fetchStats);
   const setGroupFilter = useStatsStore((s) => s.setGroupFilter);
   const setCategoryFilter = useStatsStore((s) => s.setCategoryFilter);
+  const setLinesVisible = useStatsStore((s) => s.setLinesVisible);
+  const setChartType = useStatsStore((s) => s.setChartType);
   const loading = useStatsStore((s) => s.loading);
 
   const [showCustom, setShowCustom] = useState(false);
   const [customStart, setCustomStart] = useState(startDate || '');
   const [customEnd, setCustomEnd] = useState(endDate || '');
 
-  // 分类树映射，便于快速获取分类层级信息
+  // 分类树映射
   const categoryTree = useMemo(() => {
     const cats = useCategoryStore.getState().categories;
     const tree = new Map<string, {
       name: string;
       color: string | null;
-      children: { name: string; color: string | null }[];
+      type: 'expense' | 'income';
+      children: { name: string; color: string | null; type: 'expense' | 'income' }[];
     }>();
-    // 先建立一级分类占位
     for (const c of cats) {
       if (c.parentId === null) {
-        tree.set(c.id, { name: c.name, color: c.color, children: [] });
+        tree.set(c.id, { name: c.name, color: c.color, type: c.type, children: [] });
       }
     }
-    // 填入二级分类
     for (const c of cats) {
       if (c.parentId) {
         const parent = tree.get(c.parentId);
         if (parent) {
-          parent.children.push({ name: c.name, color: c.color ?? c.parentId ?? '#64748b' });
+          parent.children.push({ name: c.name, color: c.color ?? c.parentId ?? '#64748b', type: c.type });
         }
       }
     }
     return tree;
   }, []);
-
-  // 双击图表跳转账单页筛选
-  const categoryTreeLookup = useMemo(() => {
-    const cats = useCategoryStore.getState().categories;
-    return new Map(cats.map((c) => [c.id, c]));
-  }, []);
-  void categoryTreeLookup;
 
   // 周期显示标签
   const periodLabel = useMemo(() => {
@@ -83,19 +79,16 @@ export default function StatsPanel() {
     return idx >= 0 ? QUICK_PERIODS[idx].label : period;
   }, [period, startDate, endDate]);
 
-  // 应用自定义日期
   const applyCustom = () => {
     setCustomRange(customStart, customEnd);
     setPeriod('custom');
     setShowCustom(false);
   };
 
-  // 切换预设周期
   const handlePeriod = (p: string) => {
     setPeriod(p as typeof period);
   };
 
-  // 当 period 切换回非自定义时，重置输入框
   useEffect(() => {
     if (period !== 'custom') {
       setShowCustom(false);
@@ -105,68 +98,66 @@ export default function StatsPanel() {
     }
   }, [period, startDate, endDate]);
 
-  // 单击大类块：选中/取消选中；展开时联动二级分类
   const handleGroupClick = (group: { id: string; name: string }) => {
     setGroupFilter(group.id);
   };
 
-  // 双击大类块：跳转到账单页筛选
   const handleGroupDoubleClick = (group: { id: string; name: string }) => {
     const { startDate: pStart, endDate: pEnd } = useStatsStore.getState();
     const filter = {
       startDate: pStart || undefined,
       endDate: pEnd || undefined,
       categoryId: group.id,
+      type: chartType,
     };
     const range = pStart && pEnd ? `${pStart} ~ ${pEnd}` : '全部时间';
     if (!confirm(`当前范围：${range}\n\n是否查看「${group.name}」的记录，跳转到账单页？`)) return;
-    useExpenseStore.getState().applyListFilterAndNavigate(filter);
+    useTransactionStore.getState().applyListFilterAndNavigate(filter);
   };
 
-  // 计算平均支出
-  const avgExpense = useMemo(() => {
-    if (!summary || summary.count === 0) return 0;
-    return summary.total / summary.count;
-  }, [summary]);
+  // 按 chartType 过滤
+  const filteredByGroup = useMemo(() =>
+    byGroup.filter(g => g.type === chartType),
+    [byGroup, chartType]
+  );
 
-  // 计算最大支出日期
-  const maxExpenseDay = useMemo(() => {
-    if (daily.length === 0) return null;
-    return daily.reduce((max, d) => d.total > max.total ? d : max, daily[0]);
-  }, [daily]);
+  const filteredByCategory = useMemo(() =>
+    byCategory.filter(c => c.type === chartType),
+    [byCategory, chartType]
+  );
 
-  // 二级分类数据：选中大类时只显示该大类下的子分类，否则显示全部
+  // 二级分类数据（受大类筛选影响）
   const filteredCategories = useMemo(() => {
-    if (!selectedGroupId) return byCategory;
+    if (!selectedGroupId) return filteredByCategory;
     const group = categoryTree.get(selectedGroupId);
-    if (!group || group.children.length === 0) return byCategory;
-    // 在 byCategory 中筛选出属于该大类的子分类
+    if (!group || group.children.length === 0) return filteredByCategory;
     const childNames = new Set(group.children.map((c) => c.name));
-    return byCategory.filter((item) => childNames.has(item.name));
-  }, [byCategory, selectedGroupId, categoryTree]);
+    return filteredByCategory.filter((item) => childNames.has(item.name));
+  }, [filteredByCategory, selectedGroupId, categoryTree]);
 
-  // 单击二级分类：选中/取消；双击跳转到账单页
-  const handleCategoryClick = (category: { name: string }) => {
+  const handleCategoryClick = (category: { name: string; type: 'expense' | 'income' }) => {
     setCategoryFilter(category.name);
   };
 
-  const handleCategoryDoubleClick = (category: { name: string }) => {
+  const handleCategoryDoubleClick = (category: { name: string; type?: 'expense' | 'income' }) => {
     const { startDate: pStart, endDate: pEnd } = useStatsStore.getState();
     const cats = useCategoryStore.getState().categories;
-    const cat = cats.find((c) => c.name === category.name);
-    const filter: { startDate?: string; endDate?: string; categoryId?: string } = {
+    // 用 type 精确查找，避免同名分类（如"其他"支出/收入）匹配错误
+    const cat = cats.find((c) => c.name === category.name && c.type === (category.type || chartType));
+    const filter = {
       startDate: pStart || undefined,
       endDate: pEnd || undefined,
       categoryId: cat?.id,
+      type: chartType,
     };
     const range = pStart && pEnd ? `${pStart} ~ ${pEnd}` : '全部时间';
     if (!confirm(`当前范围：${range}\n\n是否查看「${category.name}」的记录，跳转到账单页？`)) return;
-    useExpenseStore.getState().applyListFilterAndNavigate(filter);
+    useTransactionStore.getState().applyListFilterAndNavigate(filter);
   };
 
   useEffect(() => {
     fetchStats();
-  }, [period]); // 仅 period 变化时触发，因为 setPeriod 会自动更新 startDate/endDate
+  }, [period]);
 
   if (loading) {
     return (
@@ -176,34 +167,41 @@ export default function StatsPanel() {
     );
   }
 
+  // 趋势图：只绘制可见的线
+  const trendData = daily.length > 0 ? daily.map(d => ({
+    date: d.date.slice(5),
+    ...(linesVisible.expense ? { expense: d.expense } : {}),
+    ...(linesVisible.income ? { income: d.income } : {}),
+    ...(linesVisible.balance ? { balance: d.balance } : {}),
+  })) : [];
+
   return (
     <div className="space-y-6">
       {/* 统计概览卡片 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
           <div className="text-sm text-slate-500 mb-1">总支出</div>
-          <div className="text-2xl font-bold text-slate-800">
-            ¥{summary?.total.toFixed(2) ?? '0.00'}
+          <div className="text-2xl font-bold text-red-600">
+            ¥{summary?.expenseTotal.toFixed(2) ?? '0.00'}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+          <div className="text-sm text-slate-500 mb-1">总收入</div>
+          <div className="text-2xl font-bold text-green-600">
+            ¥{summary?.incomeTotal.toFixed(2) ?? '0.00'}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+          <div className="text-sm text-slate-500 mb-1">结余</div>
+          <div className={`text-2xl font-bold ${summary && summary.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            ¥{summary ? summary.balance.toFixed(2) : '0.00'}
           </div>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
           <div className="text-sm text-slate-500 mb-1">记账笔数</div>
-          <div className="text-2xl font-bold text-slate-800">{summary?.count ?? 0}</div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <div className="text-sm text-slate-500 mb-1">平均支出</div>
           <div className="text-2xl font-bold text-slate-800">
-            ¥{avgExpense.toFixed(2)}
+            {summary ? summary.expenseCount + summary.incomeCount : 0}
           </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-          <div className="text-sm text-slate-500 mb-1">最高单日</div>
-          <div className="text-2xl font-bold text-slate-800">
-            {maxExpenseDay ? `¥${maxExpenseDay.total.toFixed(0)}` : '-'}
-          </div>
-          {maxExpenseDay && (
-            <div className="text-xs text-slate-500 mt-1">{maxExpenseDay.date}</div>
-          )}
         </div>
       </div>
 
@@ -277,21 +275,53 @@ export default function StatsPanel() {
         </div>
       </div>
 
-      {/* 支出趋势 */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-crosshair" title="双击柱状/折线点可查看当日账单明细">
-        <h3 className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-          <TrendingUp className="w-4 h-4" />
-          支出趋势
-          <span className="text-xs text-slate-400 font-normal ml-auto">双击查看账单</span>
-        </h3>
+      {/* 收支趋势 */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            收支趋势
+          </h3>
+          {/* 曲线显隐开关 */}
+          <div className="flex items-center gap-1 text-xs">
+            <button
+              onClick={() => setLinesVisible({ expense: !linesVisible.expense })}
+              className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
+                linesVisible.expense
+                  ? 'bg-red-100 text-red-600 font-medium'
+                  : 'bg-slate-100 text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-red-500 inline-block" />
+              支出
+            </button>
+            <button
+              onClick={() => setLinesVisible({ income: !linesVisible.income })}
+              className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
+                linesVisible.income
+                  ? 'bg-green-100 text-green-600 font-medium'
+                  : 'bg-slate-100 text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-green-500 inline-block" />
+              收入
+            </button>
+            <button
+              onClick={() => setLinesVisible({ balance: !linesVisible.balance })}
+              className={`px-2 py-1 rounded-md transition-all flex items-center gap-1 ${
+                linesVisible.balance
+                  ? 'bg-blue-100 text-blue-600 font-medium'
+                  : 'bg-slate-100 text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+              结余
+            </button>
+          </div>
+        </div>
         {daily.length > 0 ? (
           <ResponsiveContainer width="100%" height={220}>
-            <LineChart
-              data={daily}
-              onDoubleClick={(data) => {
-                if (data?.activeLabel) handleChartDoubleClick({ date: String(data.activeLabel) });
-              }}
-            >
+            <LineChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="date"
@@ -307,19 +337,46 @@ export default function StatsPanel() {
                 width={50}
               />
               <Tooltip
-                formatter={(value: unknown) => [`¥${Number(value).toFixed(2)}`, '支出']}
+                formatter={((value: unknown, name: string) => [`¥${Number(value).toFixed(2)}`, name]) as any}
                 labelFormatter={(label: unknown) => label ? `日期：${label}` : ''}
                 contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
               />
-              <Line
-                type="monotone"
-                dataKey="total"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                dot={{ fill: '#3b82f6', strokeWidth: 1.5, r: 3 }}
-                activeDot={{ r: 5, fill: '#3b82f6' }}
-                name="支出"
-              />
+              {linesVisible.expense && (
+                <Line
+                  type="monotone"
+                  dataKey="expense"
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  dot={{ fill: '#ef4444', strokeWidth: 1.5, r: 3 }}
+                  activeDot={{ r: 5, fill: '#ef4444' }}
+                  name="支出"
+                  connectNulls={false}
+                />
+              )}
+              {linesVisible.income && (
+                <Line
+                  type="monotone"
+                  dataKey="income"
+                  stroke="#22c55e"
+                  strokeWidth={2}
+                  dot={{ fill: '#22c55e', strokeWidth: 1.5, r: 3 }}
+                  activeDot={{ r: 5, fill: '#22c55e' }}
+                  name="收入"
+                  connectNulls={false}
+                />
+              )}
+              {linesVisible.balance && (
+                <Line
+                  type="monotone"
+                  dataKey="balance"
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={{ fill: '#3b82f6', strokeWidth: 1.5, r: 2 }}
+                  name="结余"
+                  connectNulls={false}
+                />
+              )}
             </LineChart>
           </ResponsiveContainer>
         ) : (
@@ -336,28 +393,33 @@ export default function StatsPanel() {
             <PieChartIcon className="w-4 h-4" />
             大类占比
           </h3>
-          {selectedGroupId && (
-            <button
-              onClick={() => setGroupFilter(null)}
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              ✕ 取消筛选
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {selectedGroupId && (
+              <button
+                onClick={() => setGroupFilter(null)}
+                className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                ✕ 取消筛选
+              </button>
+            )}
+            <ChartTypeToggle
+              value={chartType}
+              onChange={setChartType}
+            />
+          </div>
         </div>
-        {byGroup.length > 0 ? (
+        {filteredByGroup.length > 0 ? (
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={220}>
               <PieChart>
                 <Pie
-                  data={byGroup}
+                  data={filteredByGroup}
                   cx="50%"
                   cy="50%"
                   innerRadius={55}
                   outerRadius={95}
                   paddingAngle={2}
                   dataKey="total"
-                  // 单击选中/取消，双击跳转到账单页
                   onClick={(data: any) => handleGroupClick(data.payload)}
                   onDoubleClick={(data: any) => handleGroupDoubleClick(data.payload)}
                   label={undefined}
@@ -365,12 +427,12 @@ export default function StatsPanel() {
                   stroke="#fff"
                   strokeWidth={2}
                 >
-                  {byGroup.map((group, index) => {
+                  {filteredByGroup.map((group, index) => {
                     const isSelected = selectedGroupId === group.id;
                     return (
                       <Cell
                         key={group.id}
-                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                        fill={group.type === 'income' ? '#22c55e' : CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
                         opacity={isSelected ? 1 : 0.55}
                         stroke="#fff"
                         strokeWidth={isSelected ? 3 : 2}
@@ -385,7 +447,7 @@ export default function StatsPanel() {
               </PieChart>
             </ResponsiveContainer>
             <div className="flex-1 space-y-2 max-h-[220px] overflow-y-auto">
-              {byGroup.map((item, index) => {
+              {filteredByGroup.map((item, index) => {
                 const isSelected = selectedGroupId === item.id;
                 return (
                   <div
@@ -401,16 +463,24 @@ export default function StatsPanel() {
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }}
+                        style={{ backgroundColor: item.type === 'income' ? '#22c55e' : CATEGORY_COLORS[index % CATEGORY_COLORS.length] }}
                       />
                       <span className={`truncate ${isSelected ? 'font-medium text-slate-800' : 'text-slate-700'}`}>
                         {item.name}
                       </span>
+                      <span className="text-xs text-slate-400 flex-shrink-0">
+                        {item.type === 'income' ? '收' : '支'}
+                      </span>
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <span className="font-medium text-slate-800">¥{item.total.toFixed(2)}</span>
+                      <span className={`font-medium ${item.type === 'income' ? 'text-green-600' : 'text-slate-800'}`}>
+                        ¥{item.total.toFixed(2)}
+                      </span>
                       <span className="text-xs text-slate-500 ml-2">
-                        {((item.total / (summary?.total || 1)) * 100).toFixed(1)}%
+                        {(() => {
+                          const base = item.type === 'income' ? (summary?.incomeTotal ?? 1) : (summary?.expenseTotal ?? 1);
+                          return ((item.total / base) * 100).toFixed(1);
+                        })()}%
                       </span>
                     </div>
                   </div>
@@ -441,6 +511,10 @@ export default function StatsPanel() {
                 * 仅展示「{categoryTree.get(selectedGroupId)?.name}」子分类
               </span>
             )}
+            <ChartTypeToggle
+              value={chartType}
+              onChange={setChartType}
+            />
           </div>
         </div>
         {filteredCategories.length > 0 ? (
@@ -459,15 +533,15 @@ export default function StatsPanel() {
                   labelLine={false}
                   stroke="#fff"
                   strokeWidth={2}
-                  onClick={(data: any) => data?.payload?.name && handleCategoryClick({ name: data.payload.name })}
-                  onDoubleClick={(data: any) => data?.payload?.name && handleCategoryDoubleClick({ name: data.payload.name })}
+                  onClick={(data: any) => data?.payload?.name && handleCategoryClick({ name: data.payload.name, type: data.payload.type })}
+                  onDoubleClick={(data: any) => data?.payload?.name && handleCategoryDoubleClick({ name: data.payload.name, type: data.payload.type })}
                 >
                   {filteredCategories.map((item, index) => {
                     const isSelected = selectedCategoryId === item.name;
                     return (
                       <Cell
                         key={item.name}
-                        fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                        fill={item.type === 'income' ? '#22c55e' : CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
                         opacity={isSelected ? 1 : 0.55}
                         stroke="#fff"
                         strokeWidth={isSelected ? 3 : 2}
@@ -479,8 +553,11 @@ export default function StatsPanel() {
                   formatter={(value: unknown) => `¥${Number(value).toFixed(2)}`}
                   labelFormatter={(label: unknown) => {
                     const item = filteredCategories.find(g => g.name === label);
-                    if (!item || !summary?.total) return label as string;
-                    return `${label}  ·  ${(item.total / summary.total * 100).toFixed(1)}%`;
+                    if (!item) return label as string;
+                    const base = item.type === 'income'
+                      ? (summary?.incomeTotal ?? 1)
+                      : (summary?.expenseTotal ?? 1);
+                    return `${label}  ·  ${(item.total / base * 100).toFixed(1)}%`;
                   }}
                   contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                 />
@@ -494,7 +571,7 @@ export default function StatsPanel() {
                   <div
                     key={item.name}
                     onClick={() => handleCategoryClick(item)}
-                    onDoubleClick={() => handleCategoryDoubleClick(item)}
+                    onDoubleClick={() => handleCategoryDoubleClick({ name: item.name, type: item.type })}
                     className={`flex items-center justify-between text-sm px-2 py-1.5 rounded-lg cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-slate-100 ring-1 ring-slate-400'
@@ -504,16 +581,24 @@ export default function StatsPanel() {
                     <div className="flex items-center gap-2 min-w-0">
                       <div
                         className="w-3 h-3 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: CATEGORY_COLORS[colorIndex % CATEGORY_COLORS.length] }}
+                        style={{ backgroundColor: item.type === 'income' ? '#22c55e' : CATEGORY_COLORS[colorIndex % CATEGORY_COLORS.length] }}
                       />
                       <span className={`truncate ${isSelected ? 'font-medium text-slate-800' : 'text-slate-700'}`}>
                         {item.name}
                       </span>
+                      <span className="text-xs text-slate-400 flex-shrink-0">
+                        {item.type === 'income' ? '收' : '支'}
+                      </span>
                     </div>
                     <div className="text-right flex-shrink-0 ml-2">
-                      <span className="font-medium text-slate-800">¥{item.total.toFixed(2)}</span>
+                      <span className={`font-medium ${item.type === 'income' ? 'text-green-600' : 'text-slate-800'}`}>
+                        ¥{item.total.toFixed(2)}
+                      </span>
                       <span className="text-xs text-slate-500 ml-2">
-                        {((item.total / (summary?.total || 1)) * 100).toFixed(1)}%
+                        {(() => {
+                          const base = item.type === 'income' ? (summary?.incomeTotal ?? 1) : (summary?.expenseTotal ?? 1);
+                          return ((item.total / base) * 100).toFixed(1);
+                        })()}%
                       </span>
                     </div>
                   </div>
@@ -531,18 +616,24 @@ export default function StatsPanel() {
         </div>
       </div>
 
-      {/* 分类支出柱状图 */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-crosshair" title="双击柱状图柱体可查看账单明细">
-        <h3 className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-          <BarChart3 className="w-4 h-4" />
-          分类支出对比
-          <span className="text-xs text-slate-400 font-normal ml-auto">双击查看账单</span>
-          {selectedGroupId && (
-            <span className="text-xs text-slate-400 font-normal">
-              * 仅展示「{categoryTree.get(selectedGroupId)?.name}」子分类
-            </span>
-          )}
-        </h3>
+      {/* 分类对比 */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            分类对比
+            <span className="text-xs text-slate-400 font-normal ml-auto">双击查看账单</span>
+            {selectedGroupId && (
+              <span className="text-xs text-slate-400 font-normal">
+                * 仅展示「{categoryTree.get(selectedGroupId)?.name}」子分类
+              </span>
+            )}
+          </h3>
+          <ChartTypeToggle
+            value={chartType}
+            onChange={setChartType}
+          />
+        </div>
         {filteredCategories.length > 0 ? (
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={filteredCategories}>
@@ -560,14 +651,14 @@ export default function StatsPanel() {
                 width={50}
               />
               <Tooltip
-                formatter={(value: unknown) => [`¥${Number(value).toFixed(2)}`, '支出']}
+                formatter={((value: unknown, name: string) => [`¥${Number(value).toFixed(2)}`, name]) as any}
                 contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
               />
               <Bar
                 dataKey="total"
-                fill="#64748b"
+                fill={(((props: any) => props.payload.type === 'income' ? '#22c55e' : '#ef4444')) as any}
                 radius={[4, 4, 0, 0]}
-                name="支出"
+                name="金额"
                 onDoubleClick={((data: any) => {
                   if (data?.name) handleChartDoubleClick(data);
                 }) as any}
@@ -584,13 +675,49 @@ export default function StatsPanel() {
   );
 }
 
+// ─── 支出/收入切换按钮 ─────────────────────────────────────────────────────────
+
+interface ChartTypeToggleProps {
+  value: 'expense' | 'income';
+  onChange: (type: 'expense' | 'income') => void;
+}
+
+function ChartTypeToggle({ value, onChange }: ChartTypeToggleProps) {
+  return (
+    <div className="flex rounded-lg bg-slate-100 p-0.5 text-xs">
+      <button
+        onClick={() => onChange('expense')}
+        className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+          value === 'expense'
+            ? 'bg-red-500 text-white shadow-sm'
+            : 'text-slate-500 hover:text-slate-700'
+        }`}
+      >
+        支出
+      </button>
+      <button
+        onClick={() => onChange('income')}
+        className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+          value === 'income'
+            ? 'bg-green-500 text-white shadow-sm'
+            : 'text-slate-500 hover:text-slate-700'
+        }`}
+      >
+        收入
+      </button>
+    </div>
+  );
+}
+
 // 辅助函数：双击图表根据分类名称推断筛选条件，跳转到账单页
 function handleChartDoubleClick(payload?: { name?: string; date?: string }) {
   if (!payload) return;
   const { startDate: pStart, endDate: pEnd } = useStatsStore.getState();
-  const filter: { startDate?: string; endDate?: string; categoryId?: string } = {
+  const chartType = useStatsStore.getState().chartType;
+  const filter: { startDate?: string; endDate?: string; categoryId?: string; type?: 'expense' | 'income' } = {
     startDate: pStart || undefined,
     endDate: pEnd || undefined,
+    type: chartType,
   };
   let hint = '';
   if (payload.date) {
@@ -608,5 +735,5 @@ function handleChartDoubleClick(payload?: { name?: string; date?: string }) {
     ? `当前范围：${range}\n\n是否查看${hint}的记录，跳转到账单页？`
     : `当前范围：${range}\n\n是否跳转到账单页查看全部记录？`;
   if (!confirm(message)) return;
-  useExpenseStore.getState().applyListFilterAndNavigate(filter);
+  useTransactionStore.getState().applyListFilterAndNavigate(filter);
 }

@@ -1,18 +1,18 @@
-import { db, type Expense, type Category, generateUUID } from '../db';
+import { db, type Transaction, type Category, generateUUID } from '../db';
 
 // ─── 导出功能 ────────────────────────────────────────────────────────────────
 
 /**
  * 导出为 CSV 格式（可用于 Excel 打开）
- * 包含：日期、金额、分类、备注
+ * 包含：日期、金额、类型、分类、备注
  */
 export async function exportToCSV(): Promise<string> {
-  const rawExpenses = await db.expenses.toArray();
+  const rawTransactions = await db.transactions.toArray();
   const categories: Category[] = await db.categories.toArray();
   const categoryMap = new Map<string, Category>(categories.map(c => [c.id, c]));
 
-  // 将 ExpenseRaw 转换为 Expense（填充分类信息）
-  const expenses: Expense[] = rawExpenses.map(e => ({
+  // 将 TransactionRaw 转换为 Transaction（填充分类信息）
+  const transactions: Transaction[] = rawTransactions.map(e => ({
     ...e,
     categoryName: categoryMap.get(e.categoryId)?.name || '未知分类',
     categoryIcon: categoryMap.get(e.categoryId)?.icon || null,
@@ -20,19 +20,20 @@ export async function exportToCSV(): Promise<string> {
   }));
 
   // CSV 表头
-  const headers = ['日期', '金额 (元)', '一级分类', '二级分类', '备注'];
-  const rows = expenses.map(e => {
+  const headers = ['日期', '类型', '金额 (元)', '一级分类', '二级分类', '备注'];
+  const rows = transactions.map(e => {
     const cat = categoryMap.get(e.categoryId);
     const level1Cat = cat?.parentId ? categories.find((c: Category) => c.id === cat.parentId) : null;
     const level1 = level1Cat?.name || cat?.name || '';
     const level2 = cat?.name || '';
     const date = new Date(e.createdAt).toLocaleDateString('zh-CN');
-    return [date, e.amount.toFixed(2), level1, level2, e.remark || ''];
+    return [date, e.type === 'expense' ? '支出' : '收入', e.amount.toFixed(2), level1, level2, e.remark || ''];
   });
 
   // 添加总计行
-  const total = expenses.reduce((sum: number, e: Expense) => sum + e.amount, 0);
-  rows.push(['', total.toFixed(2), '总计', '', '']);
+  const totalExpense = transactions.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0);
+  const totalIncome = transactions.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0);
+  rows.push(['', '', (totalExpense - totalIncome).toFixed(2), '结余', '', '']);
 
   // 转换为 CSV 格式（处理逗号引号）
   const csvRows = [headers, ...rows].map((row: string[]) =>
@@ -45,27 +46,33 @@ export async function exportToCSV(): Promise<string> {
 
 /**
  * 导出为 JSON 格式（完整备份）
- * 包含：所有分类和支出数据，可用于恢复
+ * 包含：所有分类和交易数据，可用于恢复
  */
 export async function exportToJson(): Promise<string> {
   const categories: Category[] = await db.categories.toArray();
-  const rawExpenses = await db.expenses.toArray();
-  const expenses: Expense[] = rawExpenses.map(e => ({
+  const rawTransactions = await db.transactions.toArray();
+  const transactions: Transaction[] = rawTransactions.map(e => ({
     ...e,
     categoryName: '',
     categoryIcon: null,
     categoryColor: '#64748b',
   }));
 
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+
   const data = {
     version: '1.0',
     exportedAt: new Date().toISOString(),
     app: '朔记',
     categories,
-    expenses,
+    transactions,
     summary: {
-      totalExpenses: expenses.length,
-      totalAmount: expenses.reduce((sum: number, e: Expense) => sum + e.amount, 0),
+      expenseTotal: totalExpense,
+      expenseCount: transactions.filter(t => t.type === 'expense').length,
+      incomeTotal: totalIncome,
+      incomeCount: transactions.filter(t => t.type === 'income').length,
+      balance: totalIncome - totalExpense,
     }
   };
 
@@ -91,9 +98,13 @@ export function downloadFile(content: string, filename: string, mimeType: string
 
 /**
  * 解析 CSV 文件
+ * 支持两种格式：
+ *   旧格式（5列）: 日期,金额 (元),一级分类,二级分类,备注
+ *   新格式（6列）: 日期,类型,金额 (元),一级分类,二级分类,备注
  */
 export function parseCSV(text: string): Array<{
   date: string;
+  type: 'expense' | 'income';
   amount: number;
   level1: string;
   level2: string;
@@ -118,8 +129,11 @@ export function parseCSV(text: string): Array<{
   // 打印第一行（表头）
   console.log('📄 表头:', lines[0]);
 
+  // 判断格式：6列=新格式（含类型），5列=旧格式
+  const isV2Format = lines[0].includes('类型');
+
   // 解析 CSV
-  const rows: Array<{ date: string; amount: number; level1: string; level2: string; remark: string }> = [];
+  const rows: Array<{ date: string; type: 'expense' | 'income'; amount: number; level1: string; level2: string; remark: string }> = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -145,14 +159,29 @@ export function parseCSV(text: string): Array<{
 
     console.log(`📄 第 ${i} 行:`, values);
 
-    const date = values[0] || '';
-    const amount = parseFloat(values[1]) || 0;
-    const level1 = values[2] || '';
-    const level2 = values[3] || '';
-    const remark = values[4] || '';
+    let date: string, amount: number, level1: string, level2: string, remark: string, txnType: 'expense' | 'income';
+
+    if (isV2Format) {
+      // 新格式: 日期,类型,金额 (元),一级分类,二级分类,备注
+      date = values[0] || '';
+      const typeStr = (values[1] || '').trim();
+      txnType = typeStr === '收入' ? 'income' : 'expense';
+      amount = parseFloat(values[2]) || 0;
+      level1 = values[3] || '';
+      level2 = values[4] || '';
+      remark = values[5] || '';
+    } else {
+      // 旧格式: 日期,金额 (元),一级分类,二级分类,备注
+      date = values[0] || '';
+      txnType = 'expense';
+      amount = parseFloat(values[1]) || 0;
+      level1 = values[2] || '';
+      level2 = values[3] || '';
+      remark = values[4] || '';
+    }
 
     if (amount > 0) {
-      rows.push({ date, amount, level1, level2, remark });
+      rows.push({ date, type: txnType, amount, level1, level2, remark });
     }
   }
 
@@ -192,16 +221,16 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
   let failed = 0;
   let skipped = 0;
 
-  // 获取已有支出，用于重复校验
-  const existingExpenses = await db.expenses.toArray();
+  // 获取已有交易记录，用于重复校验（type + categoryId + amount + createdAt + remark）
+  const existingTransactions = await db.transactions.toArray();
   const seenKeys = new Set<string>(
-    existingExpenses.map(e => `${e.categoryId}|${e.amount}|${e.createdAt}|${e.remark}`)
+    existingTransactions.map(t => `${t.type}|${t.categoryId}|${t.amount}|${t.createdAt}|${t.remark}`)
   );
 
   for (let i = 0; i < parsed.length; i++) {
     const row = parsed[i];
     try {
-      console.log(`\n处理行: ${row.date} | ${row.amount} | ${row.level1}/${row.level2}`);
+      console.log(`\n处理行: ${row.date} | ${row.type} | ${row.amount} | ${row.level1}/${row.level2}`);
 
       // 查找或创建分类
       let targetCategory = categoryMap.get(row.level2);
@@ -219,7 +248,7 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
             level1Map.set(row.level1, level1Cat);
             console.log(`  ✅ 找到已有分类: ${row.level1}`);
           } else {
-            // 自动创建缺失的一级分类
+            // 自动创建缺失的一级分类，类型与当前行一致
             const level1Id = `import-${generateUUID()}`;
             await db.categories.add({
               id: level1Id,
@@ -227,9 +256,10 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
               parentId: null,
               icon: null,
               color: '#64748b',
+              type: row.type,
               sortOrder: 0,
             });
-            level1Cat = { id: level1Id, name: row.level1, parentId: null, icon: null, color: '#64748b', sortOrder: 0 };
+            level1Cat = { id: level1Id, name: row.level1, parentId: null, icon: null, color: '#64748b', type: row.type, sortOrder: 0 };
             level1Map.set(row.level1, level1Cat);
             console.log(`  ✅ 自动创建一级分类: ${level1Id}`);
           }
@@ -249,7 +279,7 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
               categoryMap.set(row.level2, dbLevel2);
               console.log(`  ✅ 找到已有分类: ${row.level1}/${row.level2}`);
             } else {
-              // 创建新的二级分类
+              // 创建新的二级分类，类型与当前行一致
               const newId = `import-${generateUUID()}`;
               await db.categories.add({
                 id: newId,
@@ -257,9 +287,10 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
                 parentId: level1Cat.id,
                 icon: null,
                 color: level1Cat.color,
+                type: row.type,
                 sortOrder: 0,
               });
-              targetCategory = { ...level1Cat, id: newId, name: row.level2, parentId: level1Cat.id };
+              targetCategory = { ...level1Cat, id: newId, name: row.level2, parentId: level1Cat.id, type: row.type };
               categoryMap.set(row.level2, targetCategory);
               console.log(`  ✅ 创建新分类: ${newId}`);
             }
@@ -303,8 +334,8 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
 
       console.log(`  ✅ 日期解析: ${isoDate}`);
 
-      // 重复校验：categoryId + amount + 日期 + remark 完全相同则跳过
-      const dedupKey = `${targetCategory.id}|${row.amount}|${isoDate}|${row.remark}`;
+      // 重复校验：type + categoryId + amount + 日期 + remark 完全相同则跳过
+      const dedupKey = `${row.type}|${targetCategory.id}|${row.amount}|${isoDate}|${row.remark}`;
       if (seenKeys.has(dedupKey)) {
         console.log(`  ⏭️  重复记录，已跳过: ${row.amount} 元`);
         skipped++;
@@ -313,10 +344,11 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
       }
       seenKeys.add(dedupKey);
 
-      // 插入支出
-      await db.expenses.add({
+      // 插入交易记录
+      await db.transactions.add({
         id: generateUUID(),
         amount: row.amount,
+        type: row.type,
         categoryId: targetCategory.id,
         remark: row.remark,
         createdAt: isoDate,
@@ -351,39 +383,42 @@ export async function importFromJSONText(text: string, onProgress?: (progress: {
     const data = JSON.parse(text) as {
       version?: string;
       categories?: Category[];
-      expenses?: Expense[];
+      expenses?: Transaction[];
+      transactions?: Transaction[];
       exportedAt?: string;
     };
 
-    if (!data.categories || !data.expenses) {
-      throw new Error('无效的备份格式：缺少 categories 或 expenses');
+    // 支持旧格式 (expenses) 和新格式 (transactions)
+    const transactions = data.transactions || data.expenses;
+    if (!data.categories || !transactions) {
+      throw new Error('无效的备份格式：缺少 categories 或 transactions');
     }
 
     // 清空现有数据
-    await db.expenses.clear();
+    await db.transactions.clear();
     await db.categories.clear();
 
     // 导入分类
     await db.categories.bulkAdd(data.categories);
 
-    // 导入支出（重复校验：相同 categoryId+amount+createdAt+remark 的只保留第一条）
+    // 导入交易记录（重复校验：type + categoryId + amount + createdAt + remark 相同的只保留第一条）
     const seenKeys = new Set<string>();
-    const dedupedExpenses: Expense[] = [];
-    for (let j = 0; j < data.expenses.length; j++) {
-      const e = data.expenses[j];
-      const key = `${e.categoryId}|${e.amount}|${e.createdAt}|${e.remark}`;
+    const dedupedTransactions: Transaction[] = [];
+    for (let j = 0; j < transactions.length; j++) {
+      const t = transactions[j];
+      const key = `${t.type}|${t.categoryId}|${t.amount}|${t.createdAt}|${t.remark}`;
       if (seenKeys.has(key)) continue;
       seenKeys.add(key);
-      dedupedExpenses.push(e);
-      onProgress?.({ current: j + 1, total: data.expenses.length });
+      dedupedTransactions.push(t);
+      onProgress?.({ current: j + 1, total: transactions.length });
     }
 
-    await db.expenses.bulkAdd(dedupedExpenses);
+    await db.transactions.bulkAdd(dedupedTransactions);
 
     return {
-      success: dedupedExpenses.length,
+      success: dedupedTransactions.length,
       categories: data.categories.length,
-      expenses: dedupedExpenses.length,
+      expenses: dedupedTransactions.length,
       errors: [],
     };
   } catch (err) {
@@ -413,7 +448,7 @@ export async function importFromJSON(file: File, onProgress?: (progress: { curre
  * 清空所有数据
  */
 export async function clearAllData(): Promise<void> {
-  await db.expenses.clear();
+  await db.transactions.clear();
   await db.categories.clear();
 }
 
@@ -421,5 +456,5 @@ export async function clearAllData(): Promise<void> {
  * 只清空记账数据（保留分类）
  */
 export async function clearExpensesOnly(): Promise<void> {
-  await db.expenses.clear();
+  await db.transactions.clear();
 }

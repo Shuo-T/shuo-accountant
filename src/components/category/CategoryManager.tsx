@@ -76,6 +76,7 @@ export default function CategoryManager() {
       icon: null,
       color: newColor,
       sortOrder: 0,
+      type: 'expense',
     });
     setNewName('');
     setNewParentId(null);
@@ -440,6 +441,7 @@ function AddSubCategory({ parentId, onAdded }: {
       icon: null,
       color: null,
       sortOrder: 0,
+      type: 'expense',
     });
     setName('');
     setShowForm(false);

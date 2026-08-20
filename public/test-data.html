@@ -57,12 +57,13 @@
 <body>
   <div class="container">
     <h1>🌙 朔记</h1>
-    <p>测试数据插入工具</p>
-    <button id="insertBtn" onclick="insertTestData()">插入 25 条测试数据</button>
+    <p>测试数据插入工具（含收入+支出）</p>
+    <button id="insertBtn" onclick="insertTestData()">插入测试数据（含收入）</button>
+    <button id="clearBtn" onclick="clearData()" style="margin-top:12px;background:#ef4444;">清空所有数据</button>
     <div id="result" class="result"></div>
     <div class="info">
       <strong>说明：</strong><br>
-      此页面会向 IndexedDB 插入 25 条模拟记账数据，涵盖餐饮、交通、购物等分类。<br>
+      此页面会向 IndexedDB 插入模拟记账数据，包含支出和收入两类，涵盖所有预设分类。<br>
       插入后请打开 <a href="http://localhost:1420" target="_blank">朔记主应用</a> 查看数据。
     </div>
   </div>
@@ -76,71 +77,136 @@
 
       try {
         const db = new Dexie('ShuoAccountantDB');
+        db.version(3).stores({
+          categories: 'id, name, parentId, type, sortOrder',
+          transactions: 'id, categoryId, createdAt, [categoryId+createdAt], type',
+        });
         await db.open();
 
-        const existingCount = await db.expenses.count();
-        if (existingCount > 0) {
-          result.className = 'result error';
-          result.textContent = '已有 ' + existingCount + ' 条记录，如需重新插入请先清空数据库: db.expenses.clear()';
-          btn.disabled = false;
-          btn.textContent = '插入测试数据';
-          return;
-        }
+        // 插入分类
+        const categories = [
+          { id: 'cat-dining', name: '餐饮', parentId: null, icon: 'UtensilsCrossed', color: '#ef4444', sortOrder: 0, type: 'expense' },
+          { id: 'cat-transport', name: '交通', parentId: null, icon: 'Car', color: '#3b82f6', sortOrder: 1, type: 'expense' },
+          { id: 'cat-shopping', name: '购物', parentId: null, icon: 'ShoppingBag', color: '#8b5cf6', sortOrder: 2, type: 'expense' },
+          { id: 'cat-housing', name: '住房', parentId: null, icon: 'Home', color: '#f59e0b', sortOrder: 3, type: 'expense' },
+          { id: 'cat-entertainment', name: '娱乐', parentId: null, icon: 'Film', color: '#ec4899', sortOrder: 4, type: 'expense' },
+          { id: 'cat-medical', name: '医疗', parentId: null, icon: 'HeartPulse', color: '#10b981', sortOrder: 5, type: 'expense' },
+          { id: 'cat-education', name: '教育', parentId: null, icon: 'GraduationCap', color: '#06b6d4', sortOrder: 6, type: 'expense' },
+          { id: 'cat-communication', name: '通讯', parentId: null, icon: 'Smartphone', color: '#6366f1', sortOrder: 7, type: 'expense' },
+          { id: 'cat-other', name: '其他', parentId: null, icon: 'MoreHorizontal', color: '#64748b', sortOrder: 8, type: 'expense' },
+          { id: 'cat-income-salary', name: '工资', parentId: null, icon: 'Wallet', color: '#22c55e', sortOrder: 9, type: 'income' },
+          { id: 'cat-income-parttime', name: '兼职', parentId: null, icon: 'Briefcase', color: '#10b981', sortOrder: 10, type: 'income' },
+          { id: 'cat-income-invest', name: '投资', parentId: null, icon: 'TrendingUp', color: '#06b6d4', sortOrder: 11, type: 'income' },
+          { id: 'cat-income-refund', name: '退款', parentId: null, icon: 'RefreshCw', color: '#8b5cf6', sortOrder: 12, type: 'income' },
+          { id: 'cat-income-other', name: '其他', parentId: null, icon: 'MoreHorizontal', color: '#64748b', sortOrder: 13, type: 'income' },
+          { id: 'sub-breakfast', name: '早餐', parentId: 'cat-dining', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-lunch', name: '午餐', parentId: 'cat-dining', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-dinner', name: '晚餐', parentId: 'cat-dining', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-snack', name: '零食', parentId: 'cat-dining', icon: null, color: null, sortOrder: 3, type: 'expense' },
+          { id: 'sub-bus', name: '公交', parentId: 'cat-transport', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-subway', name: '地铁', parentId: 'cat-transport', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-taxi', name: '打车', parentId: 'cat-transport', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-bike', name: '共享单车', parentId: 'cat-transport', icon: null, color: null, sortOrder: 3, type: 'expense' },
+          { id: 'sub-clothing', name: '服装', parentId: 'cat-shopping', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-electronics', name: '数码', parentId: 'cat-shopping', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-daily', name: '日用品', parentId: 'cat-shopping', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-rent', name: '房租', parentId: 'cat-housing', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-utility', name: '水电', parentId: 'cat-housing', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-property', name: '物业', parentId: 'cat-housing', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-movie', name: '电影', parentId: 'cat-entertainment', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-game', name: '游戏', parentId: 'cat-entertainment', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-travel', name: '旅行', parentId: 'cat-entertainment', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-medicine', name: '药品', parentId: 'cat-medical', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-checkup', name: '检查', parentId: 'cat-medical', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-course', name: '课程', parentId: 'cat-education', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-book', name: '书籍', parentId: 'cat-education', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-phone', name: '话费', parentId: 'cat-communication', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-internet', name: '网费', parentId: 'cat-communication', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-invest-stock', name: '股票', parentId: 'cat-income-invest', icon: null, color: null, sortOrder: 0, type: 'income' },
+          { id: 'sub-invest-fund', name: '基金', parentId: 'cat-income-invest', icon: null, color: null, sortOrder: 1, type: 'income' },
+          { id: 'sub-invest-deposit', name: '存款', parentId: 'cat-income-invest', icon: null, color: null, sortOrder: 2, type: 'income' },
+        ];
+        await db.categories.bulkPut(categories);
+        console.log('✅ 分类已插入:', categories.length, '条');
 
-        const categories = await db.categories.toArray();
-        const subCategories = categories.filter(c => c.parentId !== null);
-
-        const testData = [
-          { amount: 25.5, subId: 'sub-lunch', remark: '公司食堂' },
-          { amount: 12.0, subId: 'sub-bus', remark: '上班公交' },
-          { amount: 45.0, subId: 'sub-dinner', remark: '和朋友吃饭' },
-          { amount: 8.0, subId: 'sub-phone', remark: '话费充值' },
-          { amount: 35.0, subId: 'sub-snack', remark: '奶茶+蛋糕' },
-          { amount: 18.0, subId: 'sub-breakfast', remark: '早餐' },
-          { amount: 68.0, subId: 'sub-clothing', remark: 'T恤' },
-          { amount: 22.0, subId: 'sub-subway', remark: '通勤' },
-          { amount: 15.0, subId: 'sub-movie', remark: '电影票' },
-          { amount: 5.0, subId: 'sub-internet', remark: '宽带续费' },
-          { amount: 280.0, subId: 'sub-rent', remark: '房租' },
-          { amount: 156.0, subId: 'sub-electronics', remark: '蓝牙耳机' },
-          { amount: 88.0, subId: 'sub-book', remark: '《三体》套装' },
-          { amount: 45.0, subId: 'sub-utility', remark: '电费' },
-          { amount: 30.0, subId: 'sub-taxi', remark: '打车回家' },
-          { amount: 120.0, subId: 'sub-course', remark: '在线课程' },
-          { amount: 65.0, subId: 'sub-game', remark: '游戏充值' },
-          { amount: 200.0, subId: 'sub-medicine', remark: '感冒药' },
-          { amount: 99.0, subId: 'sub-travel', remark: '景点门票' },
-          { amount: 15.0, subId: 'sub-daily', remark: '抽纸' },
-          { amount: 56.0, subId: 'sub-taxi', remark: '打车' },
-          { amount: 38.0, subId: 'sub-bike', remark: '共享单车月卡' },
-          { amount: 75.0, subId: 'sub-daily', remark: '洗衣液' },
-          { amount: 128.0, subId: 'sub-clothing', remark: '鞋子' },
-          { amount: 25.0, subId: 'sub-checkup', remark: '体检' },
+        // 插入交易数据（含收入+支出）
+        const now = new Date();
+        const transactions = [
+          // 支出
+          { amount: 25.5, categoryId: 'sub-lunch', remark: '公司食堂', type: 'expense', daysAgo: 0 },
+          { amount: 12.0, categoryId: 'sub-bus', remark: '上班公交', type: 'expense', daysAgo: 0 },
+          { amount: 45.0, categoryId: 'sub-dinner', remark: '和朋友吃饭', type: 'expense', daysAgo: 0 },
+          { amount: 8.0, categoryId: 'sub-phone', remark: '话费充值', type: 'expense', daysAgo: 1 },
+          { amount: 35.0, categoryId: 'sub-snack', remark: '奶茶+蛋糕', type: 'expense', daysAgo: 1 },
+          { amount: 18.0, categoryId: 'sub-breakfast', remark: '早餐', type: 'expense', daysAgo: 1 },
+          { amount: 68.0, categoryId: 'sub-clothing', remark: 'T恤', type: 'expense', daysAgo: 2 },
+          { amount: 22.0, categoryId: 'sub-subway', remark: '通勤', type: 'expense', daysAgo: 2 },
+          { amount: 15.0, categoryId: 'sub-movie', remark: '电影票', type: 'expense', daysAgo: 2 },
+          { amount: 5.0, categoryId: 'sub-internet', remark: '宽带续费', type: 'expense', daysAgo: 3 },
+          { amount: 280.0, categoryId: 'sub-rent', remark: '房租', type: 'expense', daysAgo: 3 },
+          { amount: 156.0, categoryId: 'sub-electronics', remark: '蓝牙耳机', type: 'expense', daysAgo: 4 },
+          { amount: 88.0, categoryId: 'sub-book', remark: '《三体》套装', type: 'expense', daysAgo: 4 },
+          { amount: 45.0, categoryId: 'sub-utility', remark: '电费', type: 'expense', daysAgo: 5 },
+          { amount: 30.0, categoryId: 'sub-taxi', remark: '打车回家', type: 'expense', daysAgo: 5 },
+          { amount: 120.0, categoryId: 'sub-course', remark: '在线课程', type: 'expense', daysAgo: 6 },
+          { amount: 65.0, categoryId: 'sub-game', remark: '游戏充值', type: 'expense', daysAgo: 6 },
+          { amount: 200.0, categoryId: 'sub-medicine', remark: '感冒药', type: 'expense', daysAgo: 7 },
+          { amount: 99.0, categoryId: 'sub-travel', remark: '景点门票', type: 'expense', daysAgo: 7 },
+          { amount: 15.0, categoryId: 'sub-daily', remark: '抽纸', type: 'expense', daysAgo: 8 },
+          { amount: 56.0, categoryId: 'sub-taxi', remark: '打车', type: 'expense', daysAgo: 8 },
+          { amount: 38.0, categoryId: 'sub-bike', remark: '共享单车月卡', type: 'expense', daysAgo: 9 },
+          { amount: 75.0, categoryId: 'sub-daily', remark: '洗衣液', type: 'expense', daysAgo: 9 },
+          { amount: 128.0, categoryId: 'sub-clothing', remark: '鞋子', type: 'expense', daysAgo: 10 },
+          { amount: 25.0, categoryId: 'sub-checkup', remark: '体检', type: 'expense', daysAgo: 10 },
+          // 收入
+          { amount: 8500.0, categoryId: 'cat-income-salary', remark: '8月份工资', type: 'income', daysAgo: 9 },
+          { amount: 200.0, categoryId: 'sub-invest-fund', remark: '基金定投收益', type: 'income', daysAgo: 7 },
+          { amount: 500.0, categoryId: 'cat-income-parttime', remark: '周末兼职收入', type: 'income', daysAgo: 5 },
+          { amount: 300.0, categoryId: 'sub-invest-stock', remark: '股票分红', type: 'income', daysAgo: 3 },
+          { amount: 8500.0, categoryId: 'cat-income-salary', remark: '7月份工资', type: 'income', daysAgo: 10 },
         ];
 
-        const now = new Date();
-        const expenses = testData.map((item, index) => {
+        const records = transactions.map(item => {
           const date = new Date(now);
-          date.setDate(date.getDate() - Math.floor(index / 4));
+          date.setDate(date.getDate() - item.daysAgo);
           date.setHours(7 + Math.floor(Math.random() * 16), Math.floor(Math.random() * 60));
           return {
             amount: item.amount,
-            categoryId: item.subId,
+            categoryId: item.categoryId,
             remark: item.remark,
             createdAt: date.toISOString(),
+            type: item.type,
           };
         });
 
-        await db.expenses.bulkAdd(expenses);
+        await db.transactions.bulkAdd(records);
+        console.log('✅ 交易记录已插入:', records.length, '条');
 
         result.className = 'result success';
-        result.textContent = '✅ 测试数据插入成功！共 ' + expenses.length + ' 条记录';
+        result.textContent = `✅ 测试数据插入成功！\n共 ${categories.length} 条分类，${records.length} 条交易记录（支出 ${records.filter(r=>r.type==='expense').length} 条，收入 ${records.filter(r=>r.type==='income').length} 条）`;
         btn.textContent = '插入完成';
       } catch (err) {
         result.className = 'result error';
         result.textContent = '❌ 插入失败: ' + err.message;
         btn.disabled = false;
         btn.textContent = '重试';
+      }
+    }
+
+    async function clearData() {
+      if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) return;
+      try {
+        const db = new Dexie('ShuoAccountantDB');
+        await db.open();
+        await db.transactions.clear();
+        await db.categories.clear();
+        const result = document.getElementById('result');
+        result.className = 'result success';
+        result.textContent = '✅ 数据已清空';
+      } catch (err) {
+        const result = document.getElementById('result');
+        result.className = 'result error';
+        result.textContent = '❌ 清空失败: ' + err.message;
       }
     }
   </script>

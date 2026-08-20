@@ -9,7 +9,7 @@ import {
   clearAllData,
   clearExpensesOnly,
 } from '../../lib/export';
-import { useExpenseStore, useCategoryStore } from '../../store';
+import { useTransactionStore, useCategoryStore } from '../../store';
 import { Download, Upload, Trash2, FileText, Database, ClipboardPaste } from 'lucide-react';
 
 export default function SettingsPanel() {
@@ -19,14 +19,14 @@ export default function SettingsPanel() {
   const [pasteText, setPasteText] = useState('');
   const [showPaste, setShowPaste] = useState(false);
 
-  const fetchExpenses = useExpenseStore((s) => s.fetchExpenses);
+  const fetchTransactions = useTransactionStore((s) => s.fetchTransactions);
   const fetchCategories = useCategoryStore((s) => s.fetchCategories);
 
   // 导出 CSV
   const handleExportCSV = async () => {
     const csv = await exportToCSV();
     const now = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\//g, '-');
-    downloadFile(csv, `朔记_${now}.csv`, 'text/csv;charset=utf-8');
+    downloadFile(csv, `朔记备份_${now}.csv`, 'text/csv;charset=utf-8');
   };
 
   // 导出 JSON
@@ -52,7 +52,7 @@ export default function SettingsPanel() {
       setImportProgress(null);
 
       if (result.success > 0) {
-        await fetchExpenses();
+        await fetchTransactions();
         await fetchCategories();
       }
     } catch (err) {
@@ -80,7 +80,7 @@ export default function SettingsPanel() {
         errors: result.errors,
       });
       if (result.expenses > 0) {
-        await fetchExpenses();
+        await fetchTransactions();
         await fetchCategories();
       }
       setPasteText('');
@@ -112,7 +112,7 @@ export default function SettingsPanel() {
       });
 
       if (result.expenses > 0) {
-        await fetchExpenses();
+        await fetchTransactions();
         await fetchCategories();
       }
     } catch (err) {
@@ -129,7 +129,7 @@ export default function SettingsPanel() {
     if (!confirm('确定要清空所有记账记录吗？分类数据将保留，此操作不可恢复！')) return;
     try {
       await clearExpensesOnly();
-      await fetchExpenses();
+      await fetchTransactions();
       await fetchCategories();
       alert('记账数据已清空');
     } catch (err) {
@@ -143,7 +143,7 @@ export default function SettingsPanel() {
 
     try {
       await clearAllData();
-      await fetchExpenses();
+      await fetchTransactions();
       await fetchCategories();
       alert('数据已清空');
     } catch (err) {
@@ -377,7 +377,7 @@ export default function SettingsPanel() {
           关于
         </h2>
         <div className="text-sm text-slate-600 space-y-2">
-          <p><strong>朔记</strong> v0.1.0</p>
+          <p><strong>朔记</strong> v0.1.2</p>
           <p>一款简洁易用的个人记账工具</p>
           <p>数据存储在浏览器本地，不会上传到服务器</p>
           <p>建议定期导出备份，防止数据丢失</p>

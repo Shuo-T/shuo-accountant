@@ -6,9 +6,12 @@ export interface CategoryOption {
   color: string | null;
 }
 
-export interface ExpenseOption {
+export type TransactionType = 'expense' | 'income';
+
+export interface TransactionOption {
   id: string;
   amount: number;
+  type: TransactionType;
   categoryId: string;
   remark: string;
   createdAt: string;
@@ -19,16 +22,22 @@ export interface ExpenseOption {
 
 export interface StatsDaily {
   date: string;
-  total: number;
+  expense: number;
+  income: number;
+  balance: number;
 }
 
 export interface StatsCategory {
   name: string;
   total: number;
   color: string | null;
+  type: TransactionType;
 }
 
 export interface Summary {
-  total: number;
-  count: number;
+  expenseTotal: number;
+  expenseCount: number;
+  incomeTotal: number;
+  incomeCount: number;
+  balance: number;
 }

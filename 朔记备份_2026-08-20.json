@@ -1,0 +1,959 @@
+{
+  "version": "1.0",
+  "exportedAt": "2026-08-20T14:02:41.037Z",
+  "app": "朔记",
+  "categories": [
+    {
+      "id": "cat-communication",
+      "name": "通讯",
+      "parentId": null,
+      "icon": "Smartphone",
+      "color": "#6366f1",
+      "sortOrder": 7,
+      "type": "expense"
+    },
+    {
+      "id": "cat-dining",
+      "name": "餐饮",
+      "parentId": null,
+      "icon": "UtensilsCrossed",
+      "color": "#ef4444",
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "cat-education",
+      "name": "教育",
+      "parentId": null,
+      "icon": "GraduationCap",
+      "color": "#06b6d4",
+      "sortOrder": 6,
+      "type": "expense"
+    },
+    {
+      "id": "cat-entertainment",
+      "name": "娱乐",
+      "parentId": null,
+      "icon": "Film",
+      "color": "#ec4899",
+      "sortOrder": 4,
+      "type": "expense"
+    },
+    {
+      "id": "cat-housing",
+      "name": "住房",
+      "parentId": null,
+      "icon": "Home",
+      "color": "#f59e0b",
+      "sortOrder": 3,
+      "type": "expense"
+    },
+    {
+      "id": "cat-income-invest",
+      "name": "投资",
+      "parentId": null,
+      "icon": "TrendingUp",
+      "color": "#06b6d4",
+      "sortOrder": 11,
+      "type": "income"
+    },
+    {
+      "id": "cat-income-other",
+      "name": "其他",
+      "parentId": null,
+      "icon": "MoreHorizontal",
+      "color": "#64748b",
+      "sortOrder": 13,
+      "type": "income"
+    },
+    {
+      "id": "cat-income-parttime",
+      "name": "兼职",
+      "parentId": null,
+      "icon": "Briefcase",
+      "color": "#10b981",
+      "sortOrder": 10,
+      "type": "income"
+    },
+    {
+      "id": "cat-income-refund",
+      "name": "退款",
+      "parentId": null,
+      "icon": "RefreshCw",
+      "color": "#8b5cf6",
+      "sortOrder": 12,
+      "type": "income"
+    },
+    {
+      "id": "cat-income-salary",
+      "name": "工资",
+      "parentId": null,
+      "icon": "Wallet",
+      "color": "#22c55e",
+      "sortOrder": 9,
+      "type": "income"
+    },
+    {
+      "id": "cat-medical",
+      "name": "医疗",
+      "parentId": null,
+      "icon": "HeartPulse",
+      "color": "#10b981",
+      "sortOrder": 5,
+      "type": "expense"
+    },
+    {
+      "id": "cat-other",
+      "name": "其他",
+      "parentId": null,
+      "icon": "MoreHorizontal",
+      "color": "#64748b",
+      "sortOrder": 8,
+      "type": "expense"
+    },
+    {
+      "id": "cat-shopping",
+      "name": "购物",
+      "parentId": null,
+      "icon": "ShoppingBag",
+      "color": "#8b5cf6",
+      "sortOrder": 2,
+      "type": "expense"
+    },
+    {
+      "id": "cat-transport",
+      "name": "交通",
+      "parentId": null,
+      "icon": "Car",
+      "color": "#3b82f6",
+      "sortOrder": 1,
+      "type": "expense"
+    },
+    {
+      "id": "sub-bike",
+      "name": "共享单车",
+      "parentId": "cat-transport",
+      "icon": null,
+      "color": null,
+      "sortOrder": 3,
+      "type": "expense"
+    },
+    {
+      "id": "sub-book",
+      "name": "书籍",
+      "parentId": "cat-education",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "expense"
+    },
+    {
+      "id": "sub-breakfast",
+      "name": "早餐",
+      "parentId": "cat-dining",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-bus",
+      "name": "公交",
+      "parentId": "cat-transport",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-checkup",
+      "name": "检查",
+      "parentId": "cat-medical",
+      "icon": null,
+      "color": null,
+      "sortOrder": 2,
+      "type": "expense"
+    },
+    {
+      "id": "sub-clothing",
+      "name": "服装",
+      "parentId": "cat-shopping",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-course",
+      "name": "课程",
+      "parentId": "cat-education",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-daily",
+      "name": "日用品",
+      "parentId": "cat-shopping",
+      "icon": null,
+      "color": null,
+      "sortOrder": 2,
+      "type": "expense"
+    },
+    {
+      "id": "sub-dinner",
+      "name": "晚餐",
+      "parentId": "cat-dining",
+      "icon": null,
+      "color": null,
+      "sortOrder": 2,
+      "type": "expense"
+    },
+    {
+      "id": "sub-electronics",
+      "name": "数码",
+      "parentId": "cat-shopping",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "expense"
+    },
+    {
+      "id": "sub-game",
+      "name": "游戏",
+      "parentId": "cat-entertainment",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "expense"
+    },
+    {
+      "id": "sub-internet",
+      "name": "网费",
+      "parentId": "cat-communication",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "expense"
+    },
+    {
+      "id": "sub-invest-deposit",
+      "name": "存款",
+      "parentId": "cat-income-invest",
+      "icon": null,
+      "color": null,
+      "sortOrder": 2,
+      "type": "income"
+    },
+    {
+      "id": "sub-invest-fund",
+      "name": "基金",
+      "parentId": "cat-income-invest",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "income"
+    },
+    {
+      "id": "sub-invest-stock",
+      "name": "股票",
+      "parentId": "cat-income-invest",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "income"
+    },
+    {
+      "id": "sub-lunch",
+      "name": "午餐",
+      "parentId": "cat-dining",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "expense"
+    },
+    {
+      "id": "sub-medicine",
+      "name": "药品",
+      "parentId": "cat-medical",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-movie",
+      "name": "电影",
+      "parentId": "cat-entertainment",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-phone",
+      "name": "话费",
+      "parentId": "cat-communication",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-property",
+      "name": "物业",
+      "parentId": "cat-housing",
+      "icon": null,
+      "color": null,
+      "sortOrder": 2,
+      "type": "expense"
+    },
+    {
+      "id": "sub-rent",
+      "name": "房租",
+      "parentId": "cat-housing",
+      "icon": null,
+      "color": null,
+      "sortOrder": 0,
+      "type": "expense"
+    },
+    {
+      "id": "sub-snack",
+      "name": "零食",
+      "parentId": "cat-dining",
+      "icon": null,
+      "color": null,
+      "sortOrder": 3,
+      "type": "expense"
+    },
+    {
+      "id": "sub-subway",
+      "name": "地铁",
+      "parentId": "cat-transport",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "expense"
+    },
+    {
+      "id": "sub-taxi",
+      "name": "打车",
+      "parentId": "cat-transport",
+      "icon": null,
+      "color": null,
+      "sortOrder": 2,
+      "type": "expense"
+    },
+    {
+      "id": "sub-travel",
+      "name": "旅行",
+      "parentId": "cat-entertainment",
+      "icon": null,
+      "color": null,
+      "sortOrder": 2,
+      "type": "expense"
+    },
+    {
+      "id": "sub-utility",
+      "name": "水电",
+      "parentId": "cat-housing",
+      "icon": null,
+      "color": null,
+      "sortOrder": 1,
+      "type": "expense"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "txn-001",
+      "amount": 25.5,
+      "type": "expense",
+      "categoryId": "sub-lunch",
+      "remark": "公司食堂工作餐",
+      "createdAt": "2026-08-10T12:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-002",
+      "amount": 12,
+      "type": "expense",
+      "categoryId": "sub-bus",
+      "remark": "上班公交",
+      "createdAt": "2026-08-10T08:15:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-003",
+      "amount": 45,
+      "type": "expense",
+      "categoryId": "sub-dinner",
+      "remark": "和朋友吃饭",
+      "createdAt": "2026-08-10T19:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-004",
+      "amount": 8,
+      "type": "expense",
+      "categoryId": "sub-phone",
+      "remark": "话费充值",
+      "createdAt": "2026-08-10T09:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-005",
+      "amount": 35,
+      "type": "expense",
+      "categoryId": "sub-snack",
+      "remark": "奶茶+蛋糕",
+      "createdAt": "2026-08-10T15:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-006",
+      "amount": 18,
+      "type": "expense",
+      "categoryId": "sub-breakfast",
+      "remark": "便利店早餐",
+      "createdAt": "2026-08-09T07:45:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-007",
+      "amount": 68,
+      "type": "expense",
+      "categoryId": "sub-clothing",
+      "remark": "T恤一件",
+      "createdAt": "2026-08-09T14:20:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-008",
+      "amount": 22,
+      "type": "expense",
+      "categoryId": "sub-subway",
+      "remark": "通勤",
+      "createdAt": "2026-08-09T18:45:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-009",
+      "amount": 15,
+      "type": "expense",
+      "categoryId": "sub-movie",
+      "remark": "电影票",
+      "createdAt": "2026-08-09T20:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-010",
+      "amount": 8500,
+      "type": "income",
+      "categoryId": "cat-income-salary",
+      "remark": "8月份工资",
+      "createdAt": "2026-08-09T09:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-011",
+      "amount": 5,
+      "type": "expense",
+      "categoryId": "sub-internet",
+      "remark": "宽带续费",
+      "createdAt": "2026-08-08T09:05:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-012",
+      "amount": 280,
+      "type": "expense",
+      "categoryId": "sub-rent",
+      "remark": "8月份房租",
+      "createdAt": "2026-08-08T09:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-013",
+      "amount": 156,
+      "type": "expense",
+      "categoryId": "sub-electronics",
+      "remark": "蓝牙耳机",
+      "createdAt": "2026-08-08T14:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-014",
+      "amount": 88,
+      "type": "expense",
+      "categoryId": "sub-book",
+      "remark": "《三体》套装",
+      "createdAt": "2026-08-07T21:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-015",
+      "amount": 45,
+      "type": "expense",
+      "categoryId": "sub-utility",
+      "remark": "电费",
+      "createdAt": "2026-08-07T09:05:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-016",
+      "amount": 30,
+      "type": "expense",
+      "categoryId": "sub-taxi",
+      "remark": "打车回家",
+      "createdAt": "2026-08-07T22:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-017",
+      "amount": 200,
+      "type": "income",
+      "categoryId": "sub-invest-fund",
+      "remark": "基金定投收益",
+      "createdAt": "2026-08-07T10:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-018",
+      "amount": 120,
+      "type": "expense",
+      "categoryId": "sub-course",
+      "remark": "在线课程",
+      "createdAt": "2026-08-06T14:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-019",
+      "amount": 65,
+      "type": "expense",
+      "categoryId": "sub-game",
+      "remark": "游戏充值",
+      "createdAt": "2026-08-06T22:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-020",
+      "amount": 200,
+      "type": "expense",
+      "categoryId": "sub-medicine",
+      "remark": "感冒药",
+      "createdAt": "2026-08-06T16:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-021",
+      "amount": 99,
+      "type": "expense",
+      "categoryId": "sub-travel",
+      "remark": "景点门票",
+      "createdAt": "2026-08-05T10:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-022",
+      "amount": 15,
+      "type": "expense",
+      "categoryId": "sub-daily",
+      "remark": "抽纸",
+      "createdAt": "2026-08-05T10:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-023",
+      "amount": 56,
+      "type": "expense",
+      "categoryId": "sub-taxi",
+      "remark": "打车",
+      "createdAt": "2026-08-05T20:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-024",
+      "amount": 500,
+      "type": "income",
+      "categoryId": "cat-income-parttime",
+      "remark": "周末兼职收入",
+      "createdAt": "2026-08-05T18:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-025",
+      "amount": 38,
+      "type": "expense",
+      "categoryId": "sub-bike",
+      "remark": "共享单车月卡",
+      "createdAt": "2026-08-04T07:50:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-026",
+      "amount": 75,
+      "type": "expense",
+      "categoryId": "sub-daily",
+      "remark": "洗衣液",
+      "createdAt": "2026-08-04T10:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-027",
+      "amount": 128,
+      "type": "expense",
+      "categoryId": "sub-clothing",
+      "remark": "鞋子",
+      "createdAt": "2026-08-04T15:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-028",
+      "amount": 25,
+      "type": "expense",
+      "categoryId": "sub-checkup",
+      "remark": "体检",
+      "createdAt": "2026-08-03T09:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-029",
+      "amount": 42,
+      "type": "expense",
+      "categoryId": "sub-breakfast",
+      "remark": "便利店早餐",
+      "createdAt": "2026-08-03T07:45:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-030",
+      "amount": 88,
+      "type": "expense",
+      "categoryId": "sub-dinner",
+      "remark": "家庭聚餐",
+      "createdAt": "2026-08-03T19:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-031",
+      "amount": 15,
+      "type": "expense",
+      "categoryId": "sub-bus",
+      "remark": "公交",
+      "createdAt": "2026-08-02T08:20:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-032",
+      "amount": 56,
+      "type": "expense",
+      "categoryId": "sub-electronics",
+      "remark": "手机壳",
+      "createdAt": "2026-08-02T14:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-033",
+      "amount": 180,
+      "type": "expense",
+      "categoryId": "sub-property",
+      "remark": "物业费",
+      "createdAt": "2026-08-01T09:10:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-034",
+      "amount": 35,
+      "type": "expense",
+      "categoryId": "sub-lunch",
+      "remark": "外卖",
+      "createdAt": "2026-08-01T12:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-035",
+      "amount": 28,
+      "type": "expense",
+      "categoryId": "sub-game",
+      "remark": "游戏皮肤",
+      "createdAt": "2026-08-01T22:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-036",
+      "amount": 8500,
+      "type": "income",
+      "categoryId": "cat-income-salary",
+      "remark": "7月份工资",
+      "createdAt": "2026-08-01T09:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-037",
+      "amount": 95,
+      "type": "expense",
+      "categoryId": "sub-course",
+      "remark": "在线课程",
+      "createdAt": "2026-07-31T14:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-038",
+      "amount": 45,
+      "type": "expense",
+      "categoryId": "sub-medicine",
+      "remark": "感冒药",
+      "createdAt": "2026-07-31T16:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-039",
+      "amount": 120,
+      "type": "expense",
+      "categoryId": "sub-clothing",
+      "remark": "外套",
+      "createdAt": "2026-07-30T14:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-040",
+      "amount": 300,
+      "type": "income",
+      "categoryId": "sub-invest-stock",
+      "remark": "股票分红",
+      "createdAt": "2026-07-30T10:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-041",
+      "amount": 32,
+      "type": "expense",
+      "categoryId": "sub-snack",
+      "remark": "水果",
+      "createdAt": "2026-07-30T15:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-042",
+      "amount": 68,
+      "type": "expense",
+      "categoryId": "sub-subway",
+      "remark": "地铁周卡",
+      "createdAt": "2026-07-29T08:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-043",
+      "amount": 25,
+      "type": "expense",
+      "categoryId": "sub-phone",
+      "remark": "话费充值",
+      "createdAt": "2026-07-29T09:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-044",
+      "amount": 150,
+      "type": "expense",
+      "categoryId": "sub-travel",
+      "remark": "景点门票",
+      "createdAt": "2026-07-28T10:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-045",
+      "amount": 45,
+      "type": "expense",
+      "categoryId": "sub-lunch",
+      "remark": "快餐",
+      "createdAt": "2026-07-28T12:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-046",
+      "amount": 88,
+      "type": "expense",
+      "categoryId": "sub-daily",
+      "remark": "抽纸",
+      "createdAt": "2026-07-27T10:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-047",
+      "amount": 35,
+      "type": "expense",
+      "categoryId": "sub-utility",
+      "remark": "水费",
+      "createdAt": "2026-07-27T09:05:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-048",
+      "amount": 56,
+      "type": "expense",
+      "categoryId": "sub-taxi",
+      "remark": "打车",
+      "createdAt": "2026-07-26T20:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-049",
+      "amount": 15,
+      "type": "expense",
+      "categoryId": "sub-breakfast",
+      "remark": "包子豆浆",
+      "createdAt": "2026-07-26T07:45:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-050",
+      "amount": 200,
+      "type": "expense",
+      "categoryId": "sub-medicine",
+      "remark": "慢性病药",
+      "createdAt": "2026-07-25T16:30:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-051",
+      "amount": 45,
+      "type": "expense",
+      "categoryId": "sub-book",
+      "remark": "专业书",
+      "createdAt": "2026-07-25T21:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-052",
+      "amount": 78,
+      "type": "expense",
+      "categoryId": "sub-electronics",
+      "remark": "数据线",
+      "createdAt": "2026-07-24T14:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    },
+    {
+      "id": "txn-053",
+      "amount": 32,
+      "type": "expense",
+      "categoryId": "sub-dinner",
+      "remark": "简餐",
+      "createdAt": "2026-07-24T19:00:00.000Z",
+      "categoryName": "",
+      "categoryIcon": null,
+      "categoryColor": "#64748b"
+    }
+  ],
+  "summary": {
+    "expenseTotal": 3246.5,
+    "expenseCount": 48,
+    "incomeTotal": 18000,
+    "incomeCount": 5,
+    "balance": 14753.5
+  }
+}

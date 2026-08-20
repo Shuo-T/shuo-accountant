@@ -46,8 +46,9 @@
       font-size: 12px;
       font-weight: 500;
     }
-    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
     .badge-green { background: #dcfce7; color: #166534; }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
     .badge-purple { background: #f3e8ff; color: #7e22ce; }
     .stats-grid {
       display: grid;
@@ -56,11 +57,14 @@
       margin-bottom: 20px;
     }
     .stat-card {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
       padding: 20px;
       border-radius: 12px;
+      color: white;
     }
+    .stat-card.expense { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .stat-card.income { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .stat-card.balance { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .stat-card.count { background: linear-gradient(135deg, #64748b, #475569); }
     .stat-card h3 {
       font-size: 14px;
       opacity: 0.9;
@@ -78,11 +82,10 @@
       cursor: pointer;
       margin-right: 10px;
       margin-bottom: 10px;
+      background: #64748b;
+      color: white;
     }
-    .btn-primary { background: #64748b; color: white; }
-    .btn-primary:hover { background: #475569; }
-    .btn-success { background: #22c55e; color: white; }
-    .btn-success:hover { background: #16a34a; }
+    .btn:hover { background: #475569; }
     .back-link {
       display: inline-block;
       margin-bottom: 20px;
@@ -111,23 +114,35 @@
     <h1>🔍 数据库调试工具</h1>
 
     <div class="stats-grid">
-      <div class="stat-card">
-        <h3>分类数量</h3>
-        <div class="value" id="catCount">-</div>
-      </div>
-      <div class="stat-card">
-        <h3>支出数量</h3>
+      <div class="stat-card expense">
+        <h3>支出总数</h3>
         <div class="value" id="expenseCount">-</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card income">
+        <h3>收入总数</h3>
+        <div class="value" id="incomeCount">-</div>
+      </div>
+      <div class="stat-card balance">
         <h3>总支出</h3>
-        <div class="value" id="totalAmount">-</div>
+        <div class="value" id="totalExpense">-</div>
+      </div>
+      <div class="stat-card balance">
+        <h3>总收入</h3>
+        <div class="value" id="totalIncome">-</div>
+      </div>
+      <div class="stat-card balance">
+        <h3>结余</h3>
+        <div class="value" id="balance">-</div>
+      </div>
+      <div class="stat-card count">
+        <h3>分类数量</h3>
+        <div class="value" id="catCount">-</div>
       </div>
     </div>
 
     <div class="section">
       <h2>📊 统计查询测试</h2>
-      <button class="btn btn-primary" onclick="testStats()">运行统计查询</button>
+      <button class="btn" onclick="testStats()">运行统计查询</button>
       <pre id="statsResult">点击"运行统计查询"查看结果...</pre>
     </div>
 
@@ -138,6 +153,7 @@
           <tr>
             <th>ID</th>
             <th>名称</th>
+            <th>类型</th>
             <th>父分类</th>
             <th>排序</th>
           </tr>
@@ -147,64 +163,74 @@
     </div>
 
     <div class="section">
-      <h2>💰 支出列表 (前20条)</h2>
+      <h2>💰 交易记录 (前20条)</h2>
       <table>
         <thead>
           <tr>
             <th>ID</th>
+            <th>类型</th>
             <th>金额</th>
             <th>分类ID</th>
             <th>日期</th>
             <th>备注</th>
           </tr>
         </thead>
-        <tbody id="expenseTable"></tbody>
+        <tbody id="transactionTable"></tbody>
       </table>
     </div>
   </div>
 
   <script>
     const db = new Dexie('ShuoAccountantDB');
-    db.version(1).stores({
-      categories: 'id, name, parentId, sortOrder',
-      expenses: 'id, categoryId, createdAt, [categoryId+createdAt]'
+    db.version(3).stores({
+      categories: 'id, name, parentId, type, sortOrder',
+      transactions: 'id, categoryId, createdAt, [categoryId+createdAt], type',
     });
 
     async function loadDebugInfo() {
       try {
         await db.open();
 
-        // 加载统计数据
+        const expenses = await db.transactions.where('type').equals('expense').toArray();
+        const incomes = await db.transactions.where('type').equals('income').toArray();
         const catCount = await db.categories.count();
-        const expenseCount = await db.expenses.count();
-        const expenses = await db.expenses.toArray();
-        const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0);
 
+        const totalExpense = expenses.reduce((sum, e) => sum + e.amount, 0);
+        const totalIncome = incomes.reduce((sum, e) => sum + e.amount, 0);
+
+        document.getElementById('expenseCount').textContent = expenses.length;
+        document.getElementById('incomeCount').textContent = incomes.length;
+        document.getElementById('totalExpense').textContent = '¥' + totalExpense.toFixed(2);
+        document.getElementById('totalIncome').textContent = '¥' + totalIncome.toFixed(2);
+        document.getElementById('balance').textContent = '¥' + (totalIncome - totalExpense).toFixed(2);
         document.getElementById('catCount').textContent = catCount;
-        document.getElementById('expenseCount').textContent = expenseCount;
-        document.getElementById('totalAmount').textContent = '¥' + totalAmount.toFixed(2);
 
-        // 加载分类列表
+        // 分类列表
         const categories = await db.categories.toArray();
         const catTable = document.getElementById('categoryTable');
         catTable.innerHTML = categories.slice(0, 10).map(c => `
           <tr>
             <td><code>${c.id}</code></td>
             <td>${c.name}</td>
-            <td>${c.parentId || '<span class="badge badge-green">一级</span>'}</td>
+            <td><span class="badge ${c.type === 'income' ? 'badge-green' : 'badge-red'}">${c.type === 'income' ? '收入' : '支出'}</span></td>
+            <td>${c.parentId ? `<code>${c.parentId}</code>` : '<span class="badge badge-green">一级</span>'}</td>
             <td>${c.sortOrder}</td>
           </tr>
         `).join('');
 
-        // 加载支出列表
-        const expTable = document.getElementById('expenseTable');
-        expTable.innerHTML = expenses.slice(0, 20).map(e => `
+        // 交易记录列表
+        const transactions = await db.transactions.toArray().then(arr => arr.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+        const txnTable = document.getElementById('transactionTable');
+        txnTable.innerHTML = transactions.slice(0, 20).map(t => `
           <tr>
-            <td><code>${(e.id || '').substring(0, 8)}...</code></td>
-            <td>¥${e.amount.toFixed(2)}</td>
-            <td><code>${e.categoryId}</code></td>
-            <td>${new Date(e.createdAt).toLocaleDateString('zh-CN')}</td>
-            <td>${e.remark || '-'}</td>
+            <td><code>${(t.id || '').substring(0, 8)}...</code></td>
+            <td><span class="badge ${t.type === 'income' ? 'badge-green' : 'badge-red'}">${t.type === 'income' ? '收入' : '支出'}</span></td>
+            <td style="color:${t.type === 'income' ? '#16a34a' : '#dc2626'}; font-weight:600">
+              ${t.type === 'income' ? '+' : '-'}¥${t.amount.toFixed(2)}
+            </td>
+            <td><code>${t.categoryId}</code></td>
+            <td>${new Date(t.createdAt).toLocaleDateString('zh-CN')}</td>
+            <td>${t.remark || '-'}</td>
           </tr>
         `).join('');
 
@@ -219,66 +245,75 @@
       result.textContent = '查询中...';
 
       try {
+        await db.open();
         const now = new Date();
         const startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
         const endDate = now.toISOString().slice(0, 10);
 
-        // 测试 getExpenses
-        console.log('测试 getExpenses...');
-        let expenses = await db.expenses.toArray();
-        console.log('全部支出数量:', expenses.length);
-
-        // 测试日期范围查询
         const start = new Date(startDate);
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        const filtered = await db.expenses.where('createdAt').between(start, end).toArray();
-        console.log('本月支出数量:', filtered.length);
 
-        // 计算每日统计
-        const dailyMap = new Map();
-        for (const e of filtered) {
-          const date = e.createdAt.slice(0, 10);
-          dailyMap.set(date, (dailyMap.get(date) || 0) + e.amount);
+        // 获取本月所有交易
+        const allTxns = await db.transactions.where('createdAt').between(start, end).toArray();
+        const expenses = allTxns.filter(t => t.type === 'expense');
+        const incomes = allTxns.filter(t => t.type === 'income');
+
+        // 每日统计
+        const dailyExpenseMap = new Map();
+        const dailyIncomeMap = new Map();
+        for (const t of expenses) {
+          const date = t.createdAt.slice(0, 10);
+          dailyExpenseMap.set(date, (dailyExpenseMap.get(date) || 0) + t.amount);
         }
-        const dailyStats = Array.from(dailyMap.entries())
-          .map(([date, total]) => ({ date, total }))
+        for (const t of incomes) {
+          const date = t.createdAt.slice(0, 10);
+          dailyIncomeMap.set(date, (dailyIncomeMap.get(date) || 0) + t.amount);
+        }
+        const allDates = new Set([...dailyExpenseMap.keys(), ...dailyIncomeMap.keys()]);
+        const dailyStats = Array.from(allDates)
+          .map(date => ({
+            date,
+            expense: dailyExpenseMap.get(date) || 0,
+            income: dailyIncomeMap.get(date) || 0,
+          }))
           .sort((a, b) => a.date.localeCompare(b.date));
-        console.log('每日统计:', dailyStats);
 
-        // 计算分类统计
+        // 分类统计
         const categories = await db.categories.toArray();
         const catMap = new Map(categories.map(c => [c.id, c]));
-        const categoryMap = new Map();
-        for (const e of filtered) {
-          const cat = catMap.get(e.categoryId);
-          if (cat) {
-            const existing = categoryMap.get(e.categoryId) || { name: cat.name, total: 0, color: cat.color };
-            categoryMap.set(e.categoryId, { ...existing, total: existing.total + e.amount });
-          }
+        const catExpenseMap = new Map();
+        const catIncomeMap = new Map();
+        for (const t of allTxns) {
+          const cat = catMap.get(t.categoryId);
+          if (!cat) continue;
+          const map = t.type === 'expense' ? catExpenseMap : catIncomeMap;
+          const existing = map.get(t.categoryId) || { name: cat.name, total: 0, color: cat.color, type: cat.type };
+          map.set(t.categoryId, { ...existing, total: existing.total + t.amount });
         }
-        const categoryStats = Array.from(categoryMap.values())
-          .sort((a, b) => b.total - a.total);
-        console.log('分类统计:', categoryStats);
 
         const output = `
 📊 统计查询测试结果
 
 📁 数据库状态:
   - 分类总数: ${await db.categories.count()}
-  - 支出总数: ${await db.expenses.count()}
+  - 交易总数: ${await db.transactions.count()}
 
-📅 本月支出 (${startDate} ~ ${endDate}):
-  - 记录数: ${filtered.length}
-  - 总支出: ¥${filtered.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}
+📅 本月交易 (${startDate} ~ ${endDate}):
+  - 支出: ${expenses.length} 条，¥${expenses.reduce((s, t) => s + t.amount, 0).toFixed(2)}
+  - 收入: ${incomes.length} 条，¥${incomes.reduce((s, t) => s + t.amount, 0).toFixed(2)}
+  - 结余: ¥${(incomes.reduce((s, t) => s + t.amount, 0) - expenses.reduce((s, t) => s + t.amount, 0)).toFixed(2)}
 
 📈 每日统计:
-${dailyStats.map(d => `  ${d.date}: ¥${d.total.toFixed(2)}`).join('\n')}
+${dailyStats.map(d => `  ${d.date}: 支出 ¥${d.expense.toFixed(2)} | 收入 ¥${d.income.toFixed(2)}`).join('\n')}
 
-📊 分类统计:
-${categoryStats.map(c => `  ${c.name}: ¥${c.total.toFixed(2)}`).join('\n')}
+📊 分类统计 (支出):
+${Array.from(catExpenseMap.values()).sort((a, b) => b.total - a.total).map(c => `  ${c.name}: ¥${c.total.toFixed(2)}`).join('\n')}
 
-✅ 查询成功！返回到统计页面查看图表。
+📊 分类统计 (收入):
+${Array.from(catIncomeMap.values()).sort((a, b) => b.total - a.total).map(c => `  ${c.name}: ¥${c.total.toFixed(2)}`).join('\n')}
+
+✅ 查询成功！
         `;
         result.textContent = output;
       } catch (err) {
@@ -287,11 +322,10 @@ ${categoryStats.map(c => `  ${c.name}: ¥${c.total.toFixed(2)}`).join('\n')}
       }
     }
 
-    // 页面加载时自动刷新
     loadDebugInfo();
-
-    // 每5秒自动刷新
-    setInterval(loadDebugInfo, 5000);
+    const timerId = setInterval(loadDebugInfo, 5000);
+    // 页面卸载时清理定时器
+    window.addEventListener('beforeunload', () => clearInterval(timerId));
   </script>
 </body>
 </html>

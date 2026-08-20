@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import {
   db, getCategories, addCategory, updateCategory, deleteCategory, reorderCategories,
-  getExpenses, addExpense, deleteExpense,
+  getTransactions, addTransaction, deleteTransaction,
   getDailyStats, getCategoryStats, getSummary, getGroupStats,
-  type Category, type Expense, type ExpenseRaw, type StatsDaily, type StatsCategory, type Summary, type StatsGroup,
+  type Category, type Transaction, type TransactionRaw, type StatsDaily, type StatsCategory, type Summary, type StatsGroup,
+  type TransactionType,
 } from '../db';
 
 // ─── Category Store ──────────────────────────────────────────────────────────
@@ -26,7 +27,18 @@ export const useCategoryStore = create<CategoryState>((set) => ({
     set({ loading: true });
     try {
       const categories = await getCategories();
-      set({ categories, loading: false });
+      // 兜底：为缺少 type 字段的旧分类补上
+      const needsFix = categories.some((c) => !c.type);
+      if (needsFix) {
+        for (const c of categories) {
+          if (!c.type) {
+            await db.categories.update(c.id, { type: 'expense' });
+          }
+        }
+        set({ categories, loading: false });
+      } else {
+        set({ categories, loading: false });
+      }
     } catch (err) {
       console.error('获取分类失败:', err);
       set({ loading: false });
@@ -53,35 +65,34 @@ export const useCategoryStore = create<CategoryState>((set) => ({
 
   reorderCategories: async (orderedIds) => {
     await reorderCategories(orderedIds);
-    // 获取已按 sortOrder 排序的分类列表
     const categories = await getCategories();
     set({ categories });
   },
 }));
 
-// ─── Expense Store ───────────────────────────────────────────────────────────
+// ─── Transaction Store ───────────────────────────────────────────────────────
 
-interface ExpenseState {
-  expenses: Expense[];
+interface TransactionState {
+  transactions: Transaction[];
   loading: boolean;
   filterApplied: boolean;
-  hasAnyExpenses: boolean;
-  filters: { categoryId?: string; startDate?: string; endDate?: string };
-  pendingListFilter: { startDate?: string; endDate?: string; categoryId?: string } | null;
-  setFilters: (filters: Partial<ExpenseState['filters']>) => void;
+  hasAnyTransactions: boolean;
+  filters: { type?: TransactionType; categoryId?: string; startDate?: string; endDate?: string };
+  pendingListFilter: { type?: TransactionType; startDate?: string; endDate?: string; categoryId?: string } | null;
+  setFilters: (filters: Partial<TransactionState['filters']>) => void;
   clearFilters: () => void;
-  fetchExpenses: () => Promise<void>;
-  addExpense: (expense: ExpenseRaw) => Promise<string>;
-  deleteExpense: (id: string) => Promise<void>;
-  applyListFilterAndNavigate: (filter: { startDate?: string; endDate?: string; categoryId?: string }) => void;
+  fetchTransactions: () => Promise<void>;
+  addTransaction: (transaction: TransactionRaw) => Promise<string>;
+  deleteTransaction: (id: string) => Promise<void>;
+  applyListFilterAndNavigate: (filter: { type?: TransactionType; startDate?: string; endDate?: string; categoryId?: string }) => void;
   clearPendingListFilter: () => void;
 }
 
-export const useExpenseStore = create<ExpenseState>((set, get) => ({
-  expenses: [],
+export const useTransactionStore = create<TransactionState>((set, get) => ({
+  transactions: [],
   loading: false,
   filterApplied: false,
-  hasAnyExpenses: false,
+  hasAnyTransactions: false,
   filters: {},
   pendingListFilter: null,
 
@@ -91,7 +102,7 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
       if (value === undefined || value === '') {
         delete merged[key as keyof typeof merged];
       } else {
-        merged[key as keyof typeof merged] = value;
+        merged[key as keyof typeof merged] = value as any;
       }
     });
     set({ filters: merged, filterApplied: Object.keys(merged).length > 0 });
@@ -99,31 +110,31 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
 
   clearFilters: () => set({ filters: {}, filterApplied: false }),
 
-  fetchExpenses: async () => {
+  fetchTransactions: async () => {
     const hasFilter = Object.keys(get().filters).length > 0;
     set({ loading: true, filterApplied: hasFilter });
     try {
-      const expenses = await getExpenses(get().filters);
-      const count = await db.expenses.count();
-      set({ expenses, hasAnyExpenses: count > 0, loading: false });
+      const transactions = await getTransactions(get().filters);
+      const count = await db.transactions.count();
+      set({ transactions, hasAnyTransactions: count > 0, loading: false });
     } catch (err) {
       console.error('获取账单失败:', err);
       set({ loading: false });
     }
   },
 
-  addExpense: async (expense) => {
-    const id = await addExpense(expense);
-    const expanded: Expense = { ...expense, id, categoryName: '', categoryIcon: null, categoryColor: '#64748b' };
-    set((s) => ({ expenses: [expanded, ...s.expenses], hasAnyExpenses: true }));
+  addTransaction: async (transaction) => {
+    const id = await addTransaction(transaction);
+    const expanded: Transaction = { ...transaction, id, categoryName: '', categoryIcon: null, categoryColor: '#64748b' };
+    set((s) => ({ transactions: [expanded, ...s.transactions], hasAnyTransactions: true }));
     return id;
   },
 
-  deleteExpense: async (id) => {
-    await deleteExpense(id);
+  deleteTransaction: async (id) => {
+    await deleteTransaction(id);
     set((s) => ({
-      expenses: s.expenses.filter((e) => e.id !== id),
-      hasAnyExpenses: s.expenses.filter((e) => e.id !== id).length > 0,
+      transactions: s.transactions.filter((t) => t.id !== id),
+      hasAnyTransactions: s.transactions.filter((t) => t.id !== id).length > 0,
     }));
   },
 
@@ -135,6 +146,9 @@ export const useExpenseStore = create<ExpenseState>((set, get) => ({
     set({ pendingListFilter: null });
   },
 }));
+
+// 兼容旧的 Expense Store 名称
+export const useExpenseStore = useTransactionStore;
 
 // ─── Stats Store ─────────────────────────────────────────────────────────────
 
@@ -151,11 +165,15 @@ interface StatsState {
   endDate: string;
   selectedGroupId: string | null;
   selectedCategoryId: string | null;
+  linesVisible: { expense: boolean; income: boolean; balance: boolean };
+  chartType: 'expense' | 'income';
   setPeriod: (period: Period) => void;
   setCustomRange: (startDate: string, endDate: string) => void;
   fetchStats: () => Promise<void>;
   setGroupFilter: (id: string | null) => void;
   setCategoryFilter: (id: string | null) => void;
+  setLinesVisible: (lines: Partial<StatsState['linesVisible']>) => void;
+  setChartType: (type: 'expense' | 'income') => void;
 }
 
 function formatLocalDate(date: Date): string {
@@ -208,7 +226,6 @@ function computeRange(period: Period, customStart?: string, customEnd?: string):
   if (period === 'custom' && customStart && customEnd) {
     return { startDate: customStart, endDate: customEnd };
   }
-  // 'all' or fallback: return everything
   return { startDate: '', endDate: '' };
 }
 
@@ -223,6 +240,8 @@ export const useStatsStore = create<StatsState>((set, get) => ({
   endDate: '',
   selectedGroupId: null,
   selectedCategoryId: null,
+  linesVisible: { expense: true, income: true, balance: true },
+  chartType: 'expense',
 
   setPeriod: (period) => {
     const range = computeRange(period, get().startDate, get().endDate);
@@ -238,7 +257,6 @@ export const useStatsStore = create<StatsState>((set, get) => ({
     try {
       const { period, startDate, endDate } = get();
       const computed = computeRange(period, startDate, endDate);
-      // 同步 store 中的日期范围，避免双击跳转时读到空值
       set({ startDate: computed.startDate, endDate: computed.endDate });
 
       const [daily, byCategory, byGroup, summary] = await Promise.all([
@@ -261,5 +279,13 @@ export const useStatsStore = create<StatsState>((set, get) => ({
 
   setCategoryFilter: (id) => {
     set((s) => ({ selectedCategoryId: s.selectedCategoryId === id ? null : id }));
+  },
+
+  setLinesVisible: (lines) => {
+    set((s) => ({ linesVisible: { ...s.linesVisible, ...lines } }));
+  },
+
+  setChartType: (type) => {
+    set({ chartType: type, selectedGroupId: null, selectedCategoryId: null });
   },
 }));

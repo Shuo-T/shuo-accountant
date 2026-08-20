@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useCategoryStore } from '../../store';
-import type { Category } from '../../db';
-import { Plus, Edit2, Trash2, ChevronDown, ChevronUp, X, Check, GripVertical, MoreHorizontal, UtensilsCrossed, Car, ShoppingBag, Home, Film, HeartPulse, GraduationCap, Smartphone } from 'lucide-react';
+import type { Category, TransactionType } from '../../db';
+import { Plus, Edit2, Trash2, ChevronDown, ChevronUp, X, Check, GripVertical, MoreHorizontal, UtensilsCrossed, Car, ShoppingBag, Home, Film, HeartPulse, GraduationCap, Smartphone, Wallet, Briefcase, TrendingUp, RefreshCw } from 'lucide-react';
 
 // Lucide 图标名称 → 组件的映射
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -15,6 +15,10 @@ const ICON_MAP: Record<string, React.ElementType> = {
   GraduationCap,
   Smartphone,
   MoreHorizontal,
+  Wallet,
+  Briefcase,
+  TrendingUp,
+  RefreshCw,
 };
 
 function getCategoryIcon(iconName: string | null) {
@@ -41,8 +45,9 @@ export default function CategoryPage() {
   const [newName, setNewName] = useState('');
   const [newParentId, setNewParentId] = useState<string | null>(null);
   const [newColor, setNewColor] = useState('#64748b');
+  const [newType, setNewType] = useState<TransactionType>('expense');
 
-  const [editingStates, setEditingStates] = useState<Record<string, { name: string; color: string }>>({});
+  const [editingStates, setEditingStates] = useState<Record<string, { name: string; color: string; type: TransactionType }>>({});
   const [colorPickerEditingId, setColorPickerEditingId] = useState<string | null>(null);
   const [colorPickerPos, setColorPickerPos] = useState<{ x: number; y: number } | null>(null);
 
@@ -73,10 +78,12 @@ export default function CategoryPage() {
       icon: null,
       color: newColor,
       sortOrder: 0,
+      type: newType,
     });
     setNewName('');
     setNewParentId(null);
     setNewColor('#64748b');
+    setNewType('expense');
     setShowAddForm(false);
     await fetchCategories();
   };
@@ -92,7 +99,7 @@ export default function CategoryPage() {
 
   const startEdit = (id: string, name: string, color: string) => {
     setEditingId(id);
-    setEditingStates(s => ({ ...s, [id]: { name, color } }));
+    setEditingStates(s => ({ ...s, [id]: { name, color, type: 'expense' } }));
   };
 
   const updateEditState = (id: string, updates: Partial<{ name: string; color: string }>) => {
@@ -147,7 +154,6 @@ export default function CategoryPage() {
       return;
     }
 
-    // 重新排列 level1 分类
     const reordered = level1.map((c) => c.id).filter((id) => id !== draggingId);
     const targetIndex = reordered.indexOf(targetId);
     reordered.splice(targetIndex, 0, draggingId);
@@ -183,6 +189,29 @@ export default function CategoryPage() {
           <h3 className="text-sm font-medium text-slate-700 mb-4">添加新分类</h3>
           <div className="space-y-4">
             <div>
+              <label className="block text-xs text-slate-500 mb-1">交易类型</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewType('expense')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    newType === 'expense' ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  支出
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewType('income')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    newType === 'income' ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  收入
+                </button>
+              </div>
+            </div>
+            <div>
               <label className="block text-xs text-slate-500 mb-1">分类名称</label>
               <input
                 type="text"
@@ -201,7 +230,7 @@ export default function CategoryPage() {
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
               >
                 <option value="">一级分类（无父分类）</option>
-                {level1.map((c: Category) => (
+                {level1.filter(c => c.type === newType).map((c: Category) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
@@ -263,7 +292,6 @@ export default function CategoryPage() {
               {/* 一级分类 */}
               <div className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
-                  {/* 拖拽手柄 */}
                   <GripVertical className="w-4 h-4 text-slate-300 cursor-grab flex-shrink-0" />
                   <button
                     onClick={(e) => {
@@ -304,6 +332,11 @@ export default function CategoryPage() {
                     <span className="font-medium text-slate-800 truncate">{cat.name}</span>
                   )}
                   {editingId !== cat.id && <span className="text-xs text-slate-400 flex-shrink-0">({children.length} 个子分类)</span>}
+                  <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                    cat.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    {cat.type === 'income' ? '收入' : '支出'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
@@ -367,12 +400,17 @@ export default function CategoryPage() {
                         ) : (
                           <span className="text-sm text-slate-700 truncate">{child.name}</span>
                         )}
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                          child.type === 'income' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                          {child.type === 'income' ? '收' : '支'}
+                        </span>
                       </div>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => {
                             setEditingId(child.id);
-                            setEditingStates(s => ({ ...s, [child.id]: { name: child.name, color: child.color || cat.color || '#64748b' } }));
+                            setEditingStates(s => ({ ...s, [child.id]: { name: child.name, color: child.color || cat.color || '#64748b', type: child.type } }));
                           }}
                           className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded transition-colors"
                         >
@@ -387,9 +425,9 @@ export default function CategoryPage() {
                       </div>
                     </div>
                   ))}
-                  {/* 添加二级分类 */}
                   <AddSubCategory
                     parentId={cat.id}
+                    parentType={cat.type}
                     onAdded={() => fetchCategories()}
                   />
                 </div>
@@ -432,8 +470,9 @@ export default function CategoryPage() {
 }
 
 // 子组件：添加二级分类
-function AddSubCategory({ parentId, onAdded }: {
+function AddSubCategory({ parentId, parentType, onAdded }: {
   parentId: string;
+  parentType: TransactionType;
   onAdded: () => Promise<void>;
 }) {
   const addCategory = useCategoryStore((s) => s.addCategory);
@@ -448,6 +487,7 @@ function AddSubCategory({ parentId, onAdded }: {
       icon: null,
       color: null,
       sortOrder: 0,
+      type: parentType,
     });
     setName('');
     setShowForm(false);

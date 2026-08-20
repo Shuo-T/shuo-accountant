@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-  <title>插入测试数据 - 朔记</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>朔记 - 测试数据插入器</title>
   <script src="https://unpkg.com/dexie@3/dist/dexie.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,13 +14,14 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 20px;
     }
     .container {
       background: white;
       border-radius: 20px;
       padding: 40px;
       max-width: 500px;
-      width: 90%;
+      width: 100%;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
       text-align: center;
     }
@@ -39,11 +42,15 @@
     }
     .btn:hover { background: #475569; transform: translateY(-2px); }
     .btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+    .btn.red { background: #ef4444; }
+    .btn.red:hover { background: #dc2626; }
     .result {
       padding: 16px;
       border-radius: 8px;
       margin-top: 20px;
       display: none;
+      text-align: left;
+      white-space: pre-wrap;
     }
     .result.success { display: block; background: #dcfce7; color: #166534; }
     .result.error { display: block; background: #fee2e2; color: #991b1b; }
@@ -53,10 +60,11 @@
       background: #f8fafc;
       border-radius: 12px;
       text-align: left;
+      font-size: 14px;
+      color: #475569;
+      line-height: 1.8;
     }
-    .stats h3 { color: #1e293b; margin-bottom: 12px; }
-    .stats ul { list-style: none; color: #475569; }
-    .stats li { padding: 4px 0; }
+    .stats h3 { color: #1e293b; margin-bottom: 8px; }
     .back-link {
       display: inline-block;
       margin-top: 24px;
@@ -73,26 +81,25 @@
 <body>
   <div class="container">
     <h1>🌙 朔记</h1>
-    <p class="subtitle">测试数据插入工具</p>
+    <p class="subtitle">测试数据插入工具（含收入+支出）</p>
 
     <button class="btn" id="insertBtn" onclick="insertTestData()">
-      插入 25 条测试数据
+      插入测试数据
     </button>
 
-    <button class="btn" id="clearBtn" onclick="clearData()" style="background: #ef4444;">
+    <button class="btn red" id="clearBtn" onclick="clearData()">
       清空所有数据
     </button>
 
     <div id="result" class="result"></div>
 
     <div class="stats">
-      <h3>📊 测试数据说明</h3>
-      <ul>
-        <li>• 餐饮类：早餐、午餐、晚餐、零食</li>
-        <li>• 交通类：公交、地铁、打车、共享单车</li>
-        <li>• 购物类：服装、数码、日用品</li>
-        <li>• 其他：住房、娱乐、医疗、教育、通讯</li>
+      <h3>📊 数据说明</h3>
+      <ul style="list-style:none;padding:0;">
+        <li>• <strong style="color:#ef4444">支出 25 条</strong>：餐饮、交通、购物、住房、娱乐、医疗、教育、通讯</li>
+        <li>• <strong style="color:#22c55e">收入 5 条</strong>：工资 x2、兼职、基金收益、股票分红</li>
         <li>• 数据时间跨度：近 10 天</li>
+        <li>• 所有分类和交易均带 <code>type</code> 字段</li>
       </ul>
     </div>
 
@@ -100,157 +107,155 @@
   </div>
 
   <script>
-    // 定义数据库模式（必须在 open 之前）
     const db = new Dexie('ShuoAccountantDB');
-    db.version(1).stores({
-      categories: 'id, name, parentId, sortOrder',
-      expenses: 'id, categoryId, createdAt, [categoryId+createdAt]'
+    db.version(3).stores({
+      categories: 'id, name, parentId, type, sortOrder',
+      transactions: 'id, categoryId, createdAt, [categoryId+createdAt], type',
     });
 
     async function insertTestData() {
       const btn = document.getElementById('insertBtn');
       const result = document.getElementById('result');
-
       btn.disabled = true;
       btn.textContent = '插入中...';
       result.className = 'result';
 
       try {
-        // 打开数据库
         await db.open();
-        console.log('✅ 数据库已打开');
 
-        // 检查是否已有数据
-        const existingCount = await db.expenses.count();
-        console.log('现有记录数:', existingCount);
-
-        if (existingCount > 0) {
-          result.className = 'result error';
-          result.textContent = '已有 ' + existingCount + ' 条记录，请先清空数据再插入';
-          btn.disabled = false;
-          btn.textContent = '插入测试数据';
-          return;
-        }
-
-        // 插入测试分类
+        // 分类
         const categories = [
-          { id: 'cat-dining', name: '餐饮', parentId: null, icon: 'UtensilsCrossed', color: '#ef4444', sortOrder: 0 },
-          { id: 'cat-transport', name: '交通', parentId: null, icon: 'Car', color: '#3b82f6', sortOrder: 1 },
-          { id: 'cat-shopping', name: '购物', parentId: null, icon: 'ShoppingBag', color: '#8b5cf6', sortOrder: 2 },
-          { id: 'cat-housing', name: '住房', parentId: null, icon: 'Home', color: '#f59e0b', sortOrder: 3 },
-          { id: 'cat-entertainment', name: '娱乐', parentId: null, icon: 'Film', color: '#ec4899', sortOrder: 4 },
-          { id: 'cat-medical', name: '医疗', parentId: null, icon: 'HeartPulse', color: '#10b981', sortOrder: 5 },
-          { id: 'cat-education', name: '教育', parentId: null, icon: 'GraduationCap', color: '#06b6d4', sortOrder: 6 },
-          { id: 'cat-communication', name: '通讯', parentId: null, icon: 'Smartphone', color: '#6366f1', sortOrder: 7 },
-          { id: 'cat-other', name: '其他', parentId: null, icon: 'MoreHorizontal', color: '#64748b', sortOrder: 8 },
-          { id: 'sub-breakfast', name: '早餐', parentId: 'cat-dining', sortOrder: 0 },
-          { id: 'sub-lunch', name: '午餐', parentId: 'cat-dining', sortOrder: 1 },
-          { id: 'sub-dinner', name: '晚餐', parentId: 'cat-dining', sortOrder: 2 },
-          { id: 'sub-snack', name: '零食', parentId: 'cat-dining', sortOrder: 3 },
-          { id: 'sub-bus', name: '公交', parentId: 'cat-transport', sortOrder: 0 },
-          { id: 'sub-subway', name: '地铁', parentId: 'cat-transport', sortOrder: 1 },
-          { id: 'sub-taxi', name: '打车', parentId: 'cat-transport', sortOrder: 2 },
-          { id: 'sub-bike', name: '共享单车', parentId: 'cat-transport', sortOrder: 3 },
-          { id: 'sub-clothing', name: '服装', parentId: 'cat-shopping', sortOrder: 0 },
-          { id: 'sub-electronics', name: '数码', parentId: 'cat-shopping', sortOrder: 1 },
-          { id: 'sub-daily', name: '日用品', parentId: 'cat-shopping', sortOrder: 2 },
-          { id: 'sub-rent', name: '房租', parentId: 'cat-housing', sortOrder: 0 },
-          { id: 'sub-utility', name: '水电', parentId: 'cat-housing', sortOrder: 1 },
-          { id: 'sub-movie', name: '电影', parentId: 'cat-entertainment', sortOrder: 0 },
-          { id: 'sub-game', name: '游戏', parentId: 'cat-entertainment', sortOrder: 1 },
-          { id: 'sub-travel', name: '旅行', parentId: 'cat-entertainment', sortOrder: 2 },
-          { id: 'sub-medicine', name: '药品', parentId: 'cat-medical', sortOrder: 0 },
-          { id: 'sub-checkup', name: '检查', parentId: 'cat-medical', sortOrder: 2 },
-          { id: 'sub-course', name: '课程', parentId: 'cat-education', sortOrder: 0 },
-          { id: 'sub-book', name: '书籍', parentId: 'cat-education', sortOrder: 1 },
-          { id: 'sub-phone', name: '话费', parentId: 'cat-communication', sortOrder: 0 },
-          { id: 'sub-internet', name: '网费', parentId: 'cat-communication', sortOrder: 1 },
+          { id: 'cat-dining', name: '餐饮', parentId: null, icon: 'UtensilsCrossed', color: '#ef4444', sortOrder: 0, type: 'expense' },
+          { id: 'cat-transport', name: '交通', parentId: null, icon: 'Car', color: '#3b82f6', sortOrder: 1, type: 'expense' },
+          { id: 'cat-shopping', name: '购物', parentId: null, icon: 'ShoppingBag', color: '#8b5cf6', sortOrder: 2, type: 'expense' },
+          { id: 'cat-housing', name: '住房', parentId: null, icon: 'Home', color: '#f59e0b', sortOrder: 3, type: 'expense' },
+          { id: 'cat-entertainment', name: '娱乐', parentId: null, icon: 'Film', color: '#ec4899', sortOrder: 4, type: 'expense' },
+          { id: 'cat-medical', name: '医疗', parentId: null, icon: 'HeartPulse', color: '#10b981', sortOrder: 5, type: 'expense' },
+          { id: 'cat-education', name: '教育', parentId: null, icon: 'GraduationCap', color: '#06b6d4', sortOrder: 6, type: 'expense' },
+          { id: 'cat-communication', name: '通讯', parentId: null, icon: 'Smartphone', color: '#6366f1', sortOrder: 7, type: 'expense' },
+          { id: 'cat-other', name: '其他', parentId: null, icon: 'MoreHorizontal', color: '#64748b', sortOrder: 8, type: 'expense' },
+          { id: 'cat-income-salary', name: '工资', parentId: null, icon: 'Wallet', color: '#22c55e', sortOrder: 9, type: 'income' },
+          { id: 'cat-income-parttime', name: '兼职', parentId: null, icon: 'Briefcase', color: '#10b981', sortOrder: 10, type: 'income' },
+          { id: 'cat-income-invest', name: '投资', parentId: null, icon: 'TrendingUp', color: '#06b6d4', sortOrder: 11, type: 'income' },
+          { id: 'cat-income-refund', name: '退款', parentId: null, icon: 'RefreshCw', color: '#8b5cf6', sortOrder: 12, type: 'income' },
+          { id: 'cat-income-other', name: '其他', parentId: null, icon: 'MoreHorizontal', color: '#64748b', sortOrder: 13, type: 'income' },
+          { id: 'sub-breakfast', name: '早餐', parentId: 'cat-dining', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-lunch', name: '午餐', parentId: 'cat-dining', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-dinner', name: '晚餐', parentId: 'cat-dining', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-snack', name: '零食', parentId: 'cat-dining', icon: null, color: null, sortOrder: 3, type: 'expense' },
+          { id: 'sub-bus', name: '公交', parentId: 'cat-transport', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-subway', name: '地铁', parentId: 'cat-transport', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-taxi', name: '打车', parentId: 'cat-transport', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-bike', name: '共享单车', parentId: 'cat-transport', icon: null, color: null, sortOrder: 3, type: 'expense' },
+          { id: 'sub-clothing', name: '服装', parentId: 'cat-shopping', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-electronics', name: '数码', parentId: 'cat-shopping', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-daily', name: '日用品', parentId: 'cat-shopping', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-rent', name: '房租', parentId: 'cat-housing', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-utility', name: '水电', parentId: 'cat-housing', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-property', name: '物业', parentId: 'cat-housing', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-movie', name: '电影', parentId: 'cat-entertainment', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-game', name: '游戏', parentId: 'cat-entertainment', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-travel', name: '旅行', parentId: 'cat-entertainment', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-medicine', name: '药品', parentId: 'cat-medical', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-checkup', name: '检查', parentId: 'cat-medical', icon: null, color: null, sortOrder: 2, type: 'expense' },
+          { id: 'sub-course', name: '课程', parentId: 'cat-education', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-book', name: '书籍', parentId: 'cat-education', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-phone', name: '话费', parentId: 'cat-communication', icon: null, color: null, sortOrder: 0, type: 'expense' },
+          { id: 'sub-internet', name: '网费', parentId: 'cat-communication', icon: null, color: null, sortOrder: 1, type: 'expense' },
+          { id: 'sub-invest-stock', name: '股票', parentId: 'cat-income-invest', icon: null, color: null, sortOrder: 0, type: 'income' },
+          { id: 'sub-invest-fund', name: '基金', parentId: 'cat-income-invest', icon: null, color: null, sortOrder: 1, type: 'income' },
+          { id: 'sub-invest-deposit', name: '存款', parentId: 'cat-income-invest', icon: null, color: null, sortOrder: 2, type: 'income' },
         ];
-
         await db.categories.bulkPut(categories);
-        console.log('✅ 分类已插入:', categories.length, '条');
+        console.log('✅ 分类已插入:', categories.length);
 
-        // 插入测试支出数据
+        // 交易记录
         const now = new Date();
-        const testData = [
-          { amount: 25.5, categoryId: 'sub-lunch', remark: '公司食堂', daysAgo: 0 },
-          { amount: 12.0, categoryId: 'sub-bus', remark: '上班公交', daysAgo: 0 },
-          { amount: 45.0, categoryId: 'sub-dinner', remark: '和朋友吃饭', daysAgo: 0 },
-          { amount: 8.0, categoryId: 'sub-phone', remark: '话费充值', daysAgo: 1 },
-          { amount: 35.0, categoryId: 'sub-snack', remark: '奶茶+蛋糕', daysAgo: 1 },
-          { amount: 18.0, categoryId: 'sub-breakfast', remark: '早餐', daysAgo: 1 },
-          { amount: 68.0, categoryId: 'sub-clothing', remark: 'T恤', daysAgo: 2 },
-          { amount: 22.0, categoryId: 'sub-subway', remark: '通勤', daysAgo: 2 },
-          { amount: 15.0, categoryId: 'sub-movie', remark: '电影票', daysAgo: 2 },
-          { amount: 5.0, categoryId: 'sub-internet', remark: '宽带续费', daysAgo: 3 },
-          { amount: 280.0, categoryId: 'sub-rent', remark: '房租', daysAgo: 3 },
-          { amount: 156.0, categoryId: 'sub-electronics', remark: '蓝牙耳机', daysAgo: 4 },
-          { amount: 88.0, categoryId: 'sub-book', remark: '《三体》套装', daysAgo: 4 },
-          { amount: 45.0, categoryId: 'sub-utility', remark: '电费', daysAgo: 5 },
-          { amount: 30.0, categoryId: 'sub-taxi', remark: '打车回家', daysAgo: 5 },
-          { amount: 120.0, categoryId: 'sub-course', remark: '在线课程', daysAgo: 6 },
-          { amount: 65.0, categoryId: 'sub-game', remark: '游戏充值', daysAgo: 6 },
-          { amount: 200.0, categoryId: 'sub-medicine', remark: '感冒药', daysAgo: 7 },
-          { amount: 99.0, categoryId: 'sub-travel', remark: '景点门票', daysAgo: 7 },
-          { amount: 15.0, categoryId: 'sub-daily', remark: '抽纸', daysAgo: 8 },
-          { amount: 56.0, categoryId: 'sub-taxi', remark: '打车', daysAgo: 8 },
-          { amount: 38.0, categoryId: 'sub-bike', remark: '共享单车月卡', daysAgo: 9 },
-          { amount: 75.0, categoryId: 'sub-daily', remark: '洗衣液', daysAgo: 9 },
-          { amount: 128.0, categoryId: 'sub-clothing', remark: '鞋子', daysAgo: 10 },
-          { amount: 25.0, categoryId: 'sub-checkup', remark: '体检', daysAgo: 10 },
+        const transactions = [
+          // 支出
+          { amount: 25.5, categoryId: 'sub-lunch', remark: '公司食堂', type: 'expense', daysAgo: 0 },
+          { amount: 12.0, categoryId: 'sub-bus', remark: '上班公交', type: 'expense', daysAgo: 0 },
+          { amount: 45.0, categoryId: 'sub-dinner', remark: '和朋友吃饭', type: 'expense', daysAgo: 0 },
+          { amount: 8.0, categoryId: 'sub-phone', remark: '话费充值', type: 'expense', daysAgo: 1 },
+          { amount: 35.0, categoryId: 'sub-snack', remark: '奶茶+蛋糕', type: 'expense', daysAgo: 1 },
+          { amount: 18.0, categoryId: 'sub-breakfast', remark: '早餐', type: 'expense', daysAgo: 1 },
+          { amount: 68.0, categoryId: 'sub-clothing', remark: 'T恤', type: 'expense', daysAgo: 2 },
+          { amount: 22.0, categoryId: 'sub-subway', remark: '通勤', type: 'expense', daysAgo: 2 },
+          { amount: 15.0, categoryId: 'sub-movie', remark: '电影票', type: 'expense', daysAgo: 2 },
+          { amount: 5.0, categoryId: 'sub-internet', remark: '宽带续费', type: 'expense', daysAgo: 3 },
+          { amount: 280.0, categoryId: 'sub-rent', remark: '房租', type: 'expense', daysAgo: 3 },
+          { amount: 156.0, categoryId: 'sub-electronics', remark: '蓝牙耳机', type: 'expense', daysAgo: 4 },
+          { amount: 88.0, categoryId: 'sub-book', remark: '《三体》套装', type: 'expense', daysAgo: 4 },
+          { amount: 45.0, categoryId: 'sub-utility', remark: '电费', type: 'expense', daysAgo: 5 },
+          { amount: 30.0, categoryId: 'sub-taxi', remark: '打车回家', type: 'expense', daysAgo: 5 },
+          { amount: 120.0, categoryId: 'sub-course', remark: '在线课程', type: 'expense', daysAgo: 6 },
+          { amount: 65.0, categoryId: 'sub-game', remark: '游戏充值', type: 'expense', daysAgo: 6 },
+          { amount: 200.0, categoryId: 'sub-medicine', remark: '感冒药', type: 'expense', daysAgo: 7 },
+          { amount: 99.0, categoryId: 'sub-travel', remark: '景点门票', type: 'expense', daysAgo: 7 },
+          { amount: 15.0, categoryId: 'sub-daily', remark: '抽纸', type: 'expense', daysAgo: 8 },
+          { amount: 56.0, categoryId: 'sub-taxi', remark: '打车', type: 'expense', daysAgo: 8 },
+          { amount: 38.0, categoryId: 'sub-bike', remark: '共享单车月卡', type: 'expense', daysAgo: 9 },
+          { amount: 75.0, categoryId: 'sub-daily', remark: '洗衣液', type: 'expense', daysAgo: 9 },
+          { amount: 128.0, categoryId: 'sub-clothing', remark: '鞋子', type: 'expense', daysAgo: 10 },
+          { amount: 25.0, categoryId: 'sub-checkup', remark: '体检', type: 'expense', daysAgo: 10 },
+          // 收入
+          { amount: 8500.0, categoryId: 'cat-income-salary', remark: '8月份工资', type: 'income', daysAgo: 9 },
+          { amount: 200.0, categoryId: 'sub-invest-fund', remark: '基金定投收益', type: 'income', daysAgo: 7 },
+          { amount: 500.0, categoryId: 'cat-income-parttime', remark: '周末兼职', type: 'income', daysAgo: 5 },
+          { amount: 300.0, categoryId: 'sub-invest-stock', remark: '股票分红', type: 'income', daysAgo: 3 },
+          { amount: 8500.0, categoryId: 'cat-income-salary', remark: '7月份工资', type: 'income', daysAgo: 10 },
         ];
 
-        const expenses = testData.map(item => {
+        const records = transactions.map(item => {
           const date = new Date(now);
           date.setDate(date.getDate() - item.daysAgo);
-          date.setHours(8 + Math.floor(Math.random() * 12), Math.floor(Math.random() * 60));
+          date.setHours(7 + Math.floor(Math.random() * 16), Math.floor(Math.random() * 60));
           return {
-            ...item,
-            id: crypto.randomUUID(),
+            amount: item.amount,
+            categoryId: item.categoryId,
+            remark: item.remark,
             createdAt: date.toISOString(),
-            categoryName: '',
-            categoryIcon: null,
-            categoryColor: '#64748b'
+            type: item.amount >= 1000 ? 'income' : 'expense',
           };
         });
 
-        await db.expenses.bulkAdd(expenses);
-        console.log('✅ 支出已插入:', expenses.length, '条');
+        await db.transactions.bulkAdd(records);
+        console.log('✅ 交易记录已插入:', records.length);
+
+        const expenseCount = records.filter(r => r.type === 'expense').length;
+        const incomeCount = records.filter(r => r.type === 'income').length;
+        const expenseTotal = records.filter(r => r.type === 'expense').reduce((s, r) => s + r.amount, 0);
+        const incomeTotal = records.filter(r => r.type === 'income').reduce((s, r) => s + r.amount, 0);
 
         result.className = 'result success';
-        result.textContent = '✅ 测试数据插入成功！共 ' + expenses.length + ' 条记录';
+        result.textContent =
+          `✅ 测试数据插入成功！\n\n` +
+          `📂 分类: ${categories.length} 条\n` +
+          `💳 支出: ${expenseCount} 条，共 ¥${expenseTotal.toFixed(2)}\n` +
+          `💰 收入: ${incomeCount} 条，共 ¥${incomeTotal.toFixed(2)}\n` +
+          `📊 结余: ¥${(incomeTotal - expenseTotal).toFixed(2)}`;
         btn.textContent = '插入完成';
-
-        console.log('✅ 测试数据插入成功！');
       } catch (err) {
         result.className = 'result error';
         result.textContent = '❌ 插入失败: ' + err.message;
         btn.disabled = false;
         btn.textContent = '重试';
-        console.error('插入失败:', err);
       }
     }
 
     async function clearData() {
-      if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) {
-        return;
-      }
-
+      if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) return;
       try {
         await db.open();
-        await db.expenses.clear();
+        await db.transactions.clear();
         await db.categories.clear();
-
         const result = document.getElementById('result');
         result.className = 'result success';
         result.textContent = '✅ 数据已清空';
-
-        console.log('✅ 数据已清空');
       } catch (err) {
         const result = document.getElementById('result');
         result.className = 'result error';
         result.textContent = '❌ 清空失败: ' + err.message;
-        console.error('清空失败:', err);
       }
     }
   </script>

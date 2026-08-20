@@ -1,31 +1,39 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useExpenseStore, useCategoryStore } from '../../store';
-import type { Category } from '../../db';
-import { Trash2, MoreHorizontal, UtensilsCrossed, Car, ShoppingBag, Home, Film, HeartPulse, GraduationCap, Smartphone, Search } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo, type ComponentType } from 'react';
+import { useTransactionStore, useCategoryStore } from '../../store';
+import type { Category, TransactionType } from '../../db';
+import { Trash2, Search, ArrowDownLeft, ArrowUpRight, UtensilsCrossed as UtensilsCrossedIcon, Car as CarIcon, ShoppingBag as ShoppingBagIcon, Home as HomeIcon, Film as FilmIcon, HeartPulse as HeartPulseIcon, GraduationCap as GraduationCapIcon, Smartphone as SmartphoneIcon, MoreHorizontal as MoreHorizontalIcon, Wallet as WalletIcon, Briefcase as BriefcaseIcon, TrendingUp as TrendingUpIcon, RefreshCw as RefreshCwIcon } from 'lucide-react';
 
-// Lucide 图标名称 → 组件的映射
-const ICON_MAP: Record<string, React.ElementType> = {
-  UtensilsCrossed,
-  Car,
-  ShoppingBag,
-  Home,
-  Film,
-  HeartPulse,
-  GraduationCap,
-  Smartphone,
-  MoreHorizontal,
+// 分类图标名称到组件的映射
+const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
+  UtensilsCrossed: UtensilsCrossedIcon,
+  Car: CarIcon,
+  ShoppingBag: ShoppingBagIcon,
+  Home: HomeIcon,
+  Film: FilmIcon,
+  HeartPulse: HeartPulseIcon,
+  GraduationCap: GraduationCapIcon,
+  Smartphone: SmartphoneIcon,
+  MoreHorizontal: MoreHorizontalIcon,
+  Wallet: WalletIcon,
+  Briefcase: BriefcaseIcon,
+  TrendingUp: TrendingUpIcon,
+  RefreshCw: RefreshCwIcon,
 };
 
 export default function ExpenseList() {
-  const expenses = useExpenseStore((s) => s.expenses);
-  const loading = useExpenseStore((s) => s.loading);
-  const fetchExpenses = useExpenseStore((s) => s.fetchExpenses);
-  const deleteExpense = useExpenseStore((s) => s.deleteExpense);
-  const filters = useExpenseStore((s) => s.filters);
-  const setFilters = useExpenseStore((s) => s.setFilters);
-  const filterApplied = useExpenseStore((s) => s.filterApplied);
-  const hasAnyExpenses = useExpenseStore((s) => s.hasAnyExpenses);
-  const clearFilters = useExpenseStore((s) => s.clearFilters);
+  return <TransactionList />;
+}
+
+function TransactionList() {
+  const transactions = useTransactionStore((s) => s.transactions);
+  const loading = useTransactionStore((s) => s.loading);
+  const fetchTransactions = useTransactionStore((s) => s.fetchTransactions);
+  const deleteTransaction = useTransactionStore((s) => s.deleteTransaction);
+  const filters = useTransactionStore((s) => s.filters);
+  const setFilters = useTransactionStore((s) => s.setFilters);
+  const filterApplied = useTransactionStore((s) => s.filterApplied);
+  const hasAnyTransactions = useTransactionStore((s) => s.hasAnyTransactions);
+  const clearFilters = useTransactionStore((s) => s.clearFilters);
   const categories = useCategoryStore((s) => s.categories);
 
   const [showFilters, setShowFilters] = useState(false);
@@ -35,59 +43,56 @@ export default function ExpenseList() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })());
   const [selectedCategory, setSelectedCategory] = useState(filters.categoryId ?? '');
+  const [selectedType, setSelectedType] = useState<TransactionType | ''>(filters.type ?? '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteMode, setDeleteMode] = useState(false);
   const [longPressTriggered, setLongPressTriggered] = useState(false);
 
-  // Long press timer refs
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressFired = useRef(false);
 
   const level1 = categories.filter((c: Category) => !c.parentId);
 
-  // 动态获取 Lucide 图标组件
-  const CategoryIcon = useMemo(() => {
-    return (iconName: string | null) => {
-      const IconComponent = iconName ? ICON_MAP[iconName] : null;
-      return IconComponent ? <IconComponent className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />;
-    };
-  }, []);
-
-  // 当 filters 变化时，同步到表单
   useEffect(() => {
     setStartDate(filters.startDate ?? '');
     setEndDate(filters.endDate ?? '');
     setSelectedCategory(filters.categoryId ?? '');
+    setSelectedType(filters.type ?? '');
   }, [filters]);
 
-  // 当 filters 变化（来自外部导航），自动刷新列表
   useEffect(() => {
-    void fetchExpenses();
-  }, [filters.startDate, filters.endDate, filters.categoryId]);
+    void fetchTransactions();
+  }, [filters.startDate, filters.endDate, filters.categoryId, filters.type]);
 
   const handleFilter = async () => {
-    setFilters({ startDate: startDate || undefined, endDate: endDate || undefined, categoryId: selectedCategory || undefined });
+    setFilters({
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+      categoryId: selectedCategory || undefined,
+      type: (selectedType as TransactionType) || undefined,
+    });
     setShowFilters(false);
     setSelectedIds(new Set());
     setDeleteMode(false);
-    await fetchExpenses();
+    await fetchTransactions();
   };
 
   const handleReset = async () => {
     setStartDate('');
     setEndDate('');
     setSelectedCategory('');
+    setSelectedType('');
     clearFilters();
     setShowFilters(false);
     setSelectedIds(new Set());
     setDeleteMode(false);
-    await fetchExpenses();
+    await fetchTransactions();
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('确定删除这条记录吗？')) {
-      await deleteExpense(id);
-      await fetchExpenses();
+      await deleteTransaction(id);
+      await fetchTransactions();
     }
   };
 
@@ -102,10 +107,10 @@ export default function ExpenseList() {
   };
 
   const toggleAll = () => {
-    if (selectedIds.size === expenses.length) {
+    if (selectedIds.size === transactions.length) {
       setSelectedIds(new Set<string>());
     } else {
-      setSelectedIds(new Set(expenses.map(e => e.id!).filter(Boolean)));
+      setSelectedIds(new Set(transactions.map(t => t.id!).filter(Boolean)));
     }
   };
 
@@ -114,13 +119,12 @@ export default function ExpenseList() {
     if (!confirm(`确定删除选中的 ${selectedIds.size} 条记录吗？`)) return;
 
     for (const id of selectedIds) {
-      await deleteExpense(id);
+      await deleteTransaction(id);
     }
     setSelectedIds(new Set());
-    await fetchExpenses();
+    await fetchTransactions();
   };
 
-  // 开始长按
   const handleTouchStart = (id: string) => {
     longPressFired.current = false;
     setLongPressTriggered(false);
@@ -129,15 +133,13 @@ export default function ExpenseList() {
       longPressFired.current = true;
       setLongPressTriggered(true);
 
-      // 进入多选模式并选中当前项
       if (!deleteMode) {
         setDeleteMode(true);
       }
       setSelectedIds(prev => new Set<string>(prev).add(id));
-    }, 500); // 500ms 长按
+    }, 500);
   };
 
-  // 结束长按（取消）
   const handleTouchEnd = () => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
@@ -151,9 +153,16 @@ export default function ExpenseList() {
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' });
   };
 
-  const formatAmount = (amount: number) => {
-    return `¥${amount.toFixed(2)}`;
+  const formatAmount = (amount: number, type: TransactionType) => {
+    const prefix = type === 'income' ? '+' : '-';
+    return `${prefix}¥${amount.toFixed(2)}`;
   };
+
+  const statsByType = useMemo(() => {
+    const expenseTotal = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    const incomeTotal = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+    return { expenseTotal, incomeTotal };
+  }, [transactions]);
 
   if (loading) {
     return (
@@ -165,13 +174,13 @@ export default function ExpenseList() {
 
   return (
     <div className="space-y-4">
-      {/* 筛选栏 */}
+      {/* 类型切换 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-semibold text-slate-800">
             账单明细
             <span className="ml-2 text-sm font-normal text-slate-500">
-              共 {expenses.length} 条
+              共 {transactions.length} 条
             </span>
           </h2>
           {selectedIds.size > 0 && (
@@ -196,9 +205,7 @@ export default function ExpenseList() {
               setSelectedIds(new Set());
             }}
             className={`flex items-center gap-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${
-              deleteMode
-                ? 'bg-slate-600 text-white'
-                : 'text-slate-600 hover:bg-slate-100'
+              deleteMode ? 'bg-slate-600 text-white' : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             {deleteMode ? '完成' : '多选'}
@@ -210,6 +217,28 @@ export default function ExpenseList() {
             <Search className="w-4 h-4" />
             筛选
           </button>
+        </div>
+      </div>
+
+      {/* 类型统计 */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <ArrowDownLeft className="w-4 h-4 text-red-500" />
+            <span className="text-sm text-slate-500">总支出</span>
+          </div>
+          <div className="text-xl font-bold text-red-600">
+            -¥{statsByType.expenseTotal.toFixed(2)}
+          </div>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <ArrowUpRight className="w-4 h-4 text-green-500" />
+            <span className="text-sm text-slate-500">总收入</span>
+          </div>
+          <div className="text-xl font-bold text-green-600">
+            +¥{statsByType.incomeTotal.toFixed(2)}
+          </div>
         </div>
       </div>
 
@@ -236,6 +265,45 @@ export default function ExpenseList() {
               />
             </div>
           </div>
+
+          {/* 类型筛选 */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">交易类型</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setSelectedType('')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedType === ''
+                    ? 'bg-slate-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                全部
+              </button>
+              <button
+                onClick={() => setSelectedType('expense')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedType === 'expense'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-red-50'
+                }`}
+              >
+                支出
+              </button>
+              <button
+                onClick={() => setSelectedType('income')}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedType === 'income'
+                    ? 'bg-green-500 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-green-50'
+                }`}
+              >
+                收入
+              </button>
+            </div>
+          </div>
+
+          {/* 分类筛选 */}
           <div>
             <label className="block text-xs text-slate-500 mb-1">分类筛选</label>
             <select
@@ -245,7 +313,7 @@ export default function ExpenseList() {
             >
               <option value="">全部分类</option>
               {level1.map((cat: Category) => (
-                <optgroup key={cat.id} label={cat.name}>
+                <optgroup key={cat.id} label={`${cat.name} (${cat.type === 'expense' ? '支' : '收'})`}>
                   <option value={cat.id}>全部「{cat.name}」</option>
                   {categories
                     .filter((c: Category) => c.parentId === cat.id)
@@ -256,6 +324,7 @@ export default function ExpenseList() {
               ))}
             </select>
           </div>
+
           <div className="flex gap-2">
             <button
               onClick={handleFilter}
@@ -273,51 +342,45 @@ export default function ExpenseList() {
         </div>
       )}
 
-      {/* 账单卡片列表 */}
+      {/* 交易卡片列表 */}
       <div className="space-y-2">
-        {/* 全选（多选模式下显示） */}
         {deleteMode && (
           <div className="flex items-center gap-2 px-2 py-2 bg-slate-50 rounded-lg">
             <input
               type="checkbox"
-              checked={selectedIds.size === expenses.length && expenses.length > 0}
+              checked={selectedIds.size === transactions.length && transactions.length > 0}
               onChange={toggleAll}
               className="w-4 h-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
             />
             <span className="text-sm text-slate-600">全选</span>
             {selectedIds.size > 0 && (
-              <span className="text-xs text-slate-400 ml-1">已选 {selectedIds.size}/{expenses.length}</span>
+              <span className="text-xs text-slate-400 ml-1">已选 {selectedIds.size}/{transactions.length}</span>
             )}
           </div>
         )}
 
-        {expenses.length === 0 ? (
+        {transactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center text-slate-400 py-16 bg-white rounded-xl border border-slate-200">
-            <div className="text-4xl mb-3 opacity-50">
-              {filterApplied && hasAnyExpenses ? '🔍' : '📝'}
-            </div>
-            <p>{filterApplied && hasAnyExpenses ? '暂无匹配记录' : '暂无记账记录'}</p>
+            <div className="text-4xl mb-3 opacity-50">{filterApplied && hasAnyTransactions ? '🔍' : '📝'}</div>
+            <p>{filterApplied && hasAnyTransactions ? '暂无匹配记录' : '暂无记账记录'}</p>
             <p className="text-sm mt-2">
-              {filterApplied && hasAnyExpenses
+              {filterApplied && hasAnyTransactions
                 ? '调整上方筛选条件后重新查询'
                 : '点击上方"记一笔"开始记账吧'}
             </p>
           </div>
         ) : (
-          expenses.map((expense) => (
+          transactions.map((transaction) => (
             <div
-              key={expense.id}
+              key={transaction.id}
               className={`bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex items-center justify-between transition-all duration-150 ${
                 deleteMode ? 'cursor-pointer active:bg-slate-50' : ''
-              } ${selectedIds.has(expense.id!) ? 'ring-2 ring-slate-400 bg-slate-50' : ''} ${
+              } ${selectedIds.has(transaction.id!) ? 'ring-2 ring-slate-400 bg-slate-50' : ''} ${
                 longPressTriggered ? 'scale-[0.98] opacity-80' : ''
               }`}
-              onClick={() => deleteMode && expense.id && toggleSelect(expense.id!)}
-              // 触摸事件（移动端长按）
+              onClick={() => deleteMode && transaction.id && toggleSelect(transaction.id!)}
               onTouchStart={() => {
-                if (!deleteMode) {
-                  handleTouchStart(expense.id!);
-                }
+                if (!deleteMode) handleTouchStart(transaction.id!);
               }}
               onTouchEnd={handleTouchEnd}
               onTouchMove={() => {
@@ -327,11 +390,8 @@ export default function ExpenseList() {
                   setLongPressTriggered(false);
                 }
               }}
-              // 鼠标事件（桌面端长按）
               onMouseDown={() => {
-                if (!deleteMode) {
-                  handleTouchStart(expense.id!);
-                }
+                if (!deleteMode) handleTouchStart(transaction.id!);
               }}
               onMouseUp={handleTouchEnd}
               onMouseLeave={handleTouchEnd}
@@ -340,8 +400,8 @@ export default function ExpenseList() {
                 <div className="mr-3" onClick={(e) => e.stopPropagation()}>
                   <input
                     type="checkbox"
-                    checked={selectedIds.has(expense.id!)}
-                    onChange={() => expense.id && toggleSelect(expense.id!)}
+                    checked={selectedIds.has(transaction.id!)}
+                    onChange={() => transaction.id && toggleSelect(transaction.id!)}
                     className="w-4 h-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500"
                   />
                 </div>
@@ -349,29 +409,35 @@ export default function ExpenseList() {
 
               <div className="flex items-center gap-3 flex-1">
                 <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white flex-shrink-0"
-                  style={{ backgroundColor: expense.categoryColor ?? '#64748b' }}
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: transaction.categoryColor ?? '#64748b' }}
                 >
-                  {CategoryIcon(expense.categoryIcon)}
+                  {transaction.categoryIcon ? (() => {
+                    const IconComponent = ICON_MAP[transaction.categoryIcon];
+                    return IconComponent
+                      ? <IconComponent className="text-white" />
+                      : <span className="text-lg">{transaction.type === 'expense' ? '📉' : '📈'}</span>;
+                  })()
+                  : <span className="text-lg">{transaction.type === 'expense' ? '📉' : '📈'}</span>}
                 </div>
                 <div className="min-w-0">
-                  <div className="font-medium text-slate-800 truncate">{expense.categoryName}</div>
-                  <div className="text-xs text-slate-500">{formatDate(expense.createdAt)}</div>
+                  <div className="font-medium text-slate-800 truncate">{transaction.categoryName}</div>
+                  <div className="text-xs text-slate-500">{formatDate(transaction.createdAt)}</div>
                 </div>
               </div>
 
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className="font-semibold text-slate-800">
-                    {formatAmount(expense.amount)}
+                  <div className={`font-semibold ${transaction.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatAmount(transaction.amount, transaction.type)}
                   </div>
-                  {expense.remark && (
-                    <div className="text-xs text-slate-500">{expense.remark}</div>
+                  {transaction.remark && (
+                    <div className="text-xs text-slate-500">{transaction.remark}</div>
                   )}
                 </div>
                 {!deleteMode && (
                   <button
-                    onClick={() => expense.id && handleDelete(expense.id!)}
+                    onClick={() => transaction.id && handleDelete(transaction.id!)}
                     className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     title="删除"
                   >
