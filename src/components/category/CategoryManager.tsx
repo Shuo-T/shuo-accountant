@@ -258,12 +258,12 @@ export default function CategoryManager() {
             >
               {/* 一级分类 */}
               <div className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   {/* 拖拽手柄 */}
                   <GripVertical className="w-4 h-4 text-slate-300 cursor-grab flex-shrink-0" />
                   <button
                     onClick={() => toggleExpand(cat.id)}
-                    className="p-1 hover:bg-slate-200 rounded transition-colors"
+                    className="p-1 hover:bg-slate-200 rounded transition-colors flex-shrink-0"
                   >
                     {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
                   </button>
@@ -274,29 +274,29 @@ export default function CategoryManager() {
                     {getCategoryIcon(cat.icon)}
                   </div>
                   {editingId === cat.id ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 min-w-0 flex-wrap">
                       <input
                         type="text"
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(cat.id); }}
-                        className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                        className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 min-w-0 flex-1"
                         autoFocus
                       />
                       <button
                         onClick={(e) => { e.stopPropagation(); openColorPicker(cat.id, e); }}
-                        className="w-5 h-5 rounded border border-slate-300 transition-all hover:scale-110"
+                        className="w-5 h-5 rounded border border-slate-300 transition-all hover:scale-110 flex-shrink-0"
                         style={{ backgroundColor: editColor }}
                         title="选择颜色"
                       />
-                      <button onClick={() => handleSaveEdit(cat.id)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="保存">
+                      <button onClick={() => handleSaveEdit(cat.id)} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="保存">
                         <Check className="w-4 h-4" />
                       </button>
                     </div>
                   ) : (
-                    <span className="font-medium text-slate-800">{cat.name}</span>
+                    <span className="font-medium text-slate-800 truncate">{cat.name}</span>
                   )}
-                  <span className="text-xs text-slate-500">({children.length} 个子分类)</span>
+                  {editingId !== cat.id && <span className="text-xs text-slate-500 flex-shrink-0">({children.length} 个子分类)</span>}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -328,7 +328,7 @@ export default function CategoryManager() {
                       key={child.id}
                       className="flex items-center justify-between px-4 py-3 hover:bg-slate-100 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
                         <div
                           className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-xs flex-shrink-0"
                           style={{ backgroundColor: child.color || cat.color || '#64748b' }}
@@ -336,27 +336,27 @@ export default function CategoryManager() {
                           {getCategoryIcon(child.icon || cat.icon)}
                         </div>
                         {editingId === child.id ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 min-w-0 flex-wrap">
                             <input
                               type="text"
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
                               onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(child.id); }}
-                              className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                              className="px-2 py-1 border border-slate-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 min-w-0 flex-1"
                               autoFocus
                             />
                             <button
                               onClick={(e) => { e.stopPropagation(); openColorPicker(child.id, e); }}
-                              className="w-4 h-4 rounded border border-slate-300 transition-all hover:scale-110"
+                              className="w-4 h-4 rounded border border-slate-300 transition-all hover:scale-110 flex-shrink-0"
                               style={{ backgroundColor: editColor }}
                               title="选择颜色"
                             />
-                            <button onClick={() => handleSaveEdit(child.id)} className="p-1 text-green-600 hover:bg-green-50 rounded" title="保存">
+                            <button onClick={() => handleSaveEdit(child.id)} className="p-1 text-green-600 hover:bg-green-50 rounded flex-shrink-0" title="保存">
                               <Check className="w-3 h-3" />
                             </button>
                           </div>
                         ) : (
-                          <span className="text-sm text-slate-700">{child.name}</span>
+                          <span className="text-sm text-slate-700 truncate">{child.name}</span>
                         )}
                       </div>
                       <div className="flex items-center gap-2">

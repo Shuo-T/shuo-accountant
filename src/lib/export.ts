@@ -1,4 +1,4 @@
-import { db, type Expense, type Category } from '../db';
+import { db, type Expense, type Category, generateUUID } from '../db';
 
 // ─── 导出功能 ────────────────────────────────────────────────────────────────
 
@@ -220,7 +220,7 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
             console.log(`  ✅ 找到已有分类: ${row.level1}`);
           } else {
             // 自动创建缺失的一级分类
-            const level1Id = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            const level1Id = `import-${generateUUID()}`;
             await db.categories.add({
               id: level1Id,
               name: row.level1,
@@ -250,7 +250,7 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
               console.log(`  ✅ 找到已有分类: ${row.level1}/${row.level2}`);
             } else {
               // 创建新的二级分类
-              const newId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              const newId = `import-${generateUUID()}`;
               await db.categories.add({
                 id: newId,
                 name: row.level2,
@@ -315,7 +315,7 @@ export async function importFromCSV(file: File, onProgress?: (progress: { curren
 
       // 插入支出
       await db.expenses.add({
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         amount: row.amount,
         categoryId: targetCategory.id,
         remark: row.remark,

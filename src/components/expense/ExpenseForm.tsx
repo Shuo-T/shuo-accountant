@@ -95,7 +95,6 @@ export default function ExpenseForm() {
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
-            autoFocus
           />
         </div>
 

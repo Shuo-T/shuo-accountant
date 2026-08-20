@@ -158,9 +158,17 @@ interface StatsState {
   setCategoryFilter: (id: string | null) => void;
 }
 
+function formatLocalDate(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 function computeRange(period: Period, customStart?: string, customEnd?: string): { startDate: string; endDate: string } {
   const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  const today = formatLocalDate(now);
 
   if (period === 'day') {
     return { startDate: today, endDate: today };
@@ -169,31 +177,31 @@ function computeRange(period: Period, customStart?: string, customEnd?: string):
     const dayOfWeek = now.getDay();
     const monday = new Date(now);
     monday.setDate(now.getDate() - ((dayOfWeek + 6) % 7));
-    return { startDate: monday.toISOString().slice(0, 10), endDate: today };
+    return { startDate: formatLocalDate(monday), endDate: today };
   }
   if (period === 'month') {
     return {
-      startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10),
+      startDate: formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1)),
       endDate: today,
     };
   }
   if (period === 'quarter') {
     const q = Math.floor(now.getMonth() / 3);
     return {
-      startDate: new Date(now.getFullYear(), q * 3, 1).toISOString().slice(0, 10),
+      startDate: formatLocalDate(new Date(now.getFullYear(), q * 3, 1)),
       endDate: today,
     };
   }
   if (period === 'half') {
     const half = now.getMonth() >= 6 ? 6 : 0;
     return {
-      startDate: new Date(now.getFullYear(), half, 1).toISOString().slice(0, 10),
+      startDate: formatLocalDate(new Date(now.getFullYear(), half, 1)),
       endDate: today,
     };
   }
   if (period === 'year') {
     return {
-      startDate: new Date(now.getFullYear(), 0, 1).toISOString().slice(0, 10),
+      startDate: formatLocalDate(new Date(now.getFullYear(), 0, 1)),
       endDate: today,
     };
   }

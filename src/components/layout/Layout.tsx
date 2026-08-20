@@ -41,7 +41,7 @@ export default function Layout({ children, currentPage, onNavigate }: Props) {
       </header>
 
       {/* 主内容区 */}
-      <main className="flex-1 overflow-auto p-6">
+      <main className="flex-1 overflow-auto p-4 sm:p-6">
         {children}
       </main>
 

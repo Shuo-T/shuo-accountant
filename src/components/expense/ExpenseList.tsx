@@ -30,7 +30,10 @@ export default function ExpenseList() {
 
   const [showFilters, setShowFilters] = useState(false);
   const [startDate, setStartDate] = useState(filters.startDate ?? '');
-  const [endDate, setEndDate] = useState(filters.endDate ?? new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(filters.endDate ?? (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })());
   const [selectedCategory, setSelectedCategory] = useState(filters.categoryId ?? '');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteMode, setDeleteMode] = useState(false);

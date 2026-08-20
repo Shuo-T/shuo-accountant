@@ -11,8 +11,20 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             // 使用 tokio runtime 来初始化数据库
-            let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
-            let pool = rt.block_on(init_pool());
+            let rt = match tokio::runtime::Runtime::new() {
+                Ok(rt) => rt,
+                Err(e) => {
+                    eprintln!("Failed to create tokio runtime: {}", e);
+                    return Err(Box::new(e));
+                }
+            };
+            let pool = match rt.block_on(init_pool()) {
+                Ok(pool) => pool,
+                Err(e) => {
+                    eprintln!("Failed to initialize database: {}", e);
+                    return Err(Box::new(e));
+                }
+            };
             app.manage(pool);
             // 保持 runtime 存活
             app.manage(rt);

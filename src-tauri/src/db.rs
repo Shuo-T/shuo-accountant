@@ -1,4 +1,4 @@
-use sqlx::{Executor, SqliteConnectOptions, SqlitePool};
+use sqlx::{Executor, SqlitePool};
 use std::path::PathBuf;
 
 /// 全局 SQLite 连接池（线程安全）
@@ -6,16 +6,24 @@ pub type DbPool = tokio::sync::Mutex<SqlitePool>;
 
 /// 获取数据库文件路径（跨平台兼容）
 fn get_db_path() -> PathBuf {
-    // 使用应用数据目录（Android、桌面端都兼容）
-    let base_dir = if let Some(dir) = dirs::data_local_dir() {
-        // Windows: C:\Users\xxx\AppData\Local
-        // macOS: ~/Library/Application Support
-        // Linux: ~/.local/share
-        dir
-    } else {
-        // 回退到当前目录（开发调试用）
-        std::env::current_dir().unwrap_or_default()
-    };
+    // Android 上使用应用专属目录
+    #[cfg(target_os = "android")]
+    {
+        // 在 Android 上，Tauri 会通过环境变量提供数据目录
+        if let Ok(data_dir) = std::env::var("TAURI_ANDROID_DATA_DIRECTORY") {
+            return PathBuf::from(data_dir).join("app.db");
+        }
+        // 备用：使用应用缓存目录
+        return dirs::cache_dir()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_default())
+            .join("com.shuo.accountant")
+            .join("app.db");
+    }
+
+    // 桌面端使用标准路径
+    let base_dir = dirs::data_local_dir()
+        .or_else(|| dirs::config_dir())
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
     let app_dir = base_dir.join("heima-accountant");
     std::fs::create_dir_all(&app_dir).expect("创建数据目录失败");
@@ -27,18 +35,21 @@ pub async fn init_pool() -> DbPool {
     let path = get_db_path();
     eprintln!("Database path: {}", path.display());
 
-    let connect_options = SqliteConnectOptions::new()
-        .filename(path)
-        .foreign_keys(true);
+    // 确保目录存在
+    if let Some(parent) = path.parent() {
+        if let Err(e) = std::fs::create_dir_all(parent) {
+            eprintln!("Warning: Failed to create database directory: {}", e);
+        }
+    }
 
-    let pool = SqlitePool::connect_with(connect_options)
+    let pool = SqlitePool::connect(&format!("sqlite://{}", path.to_string_lossy()))
         .await
-        .expect("无法连接数据库");
+        .map_err(|e| format!("无法连接数据库: {}", e))?;
 
     // 执行迁移
     migrate(&pool).await;
 
-    tokio::sync::Mutex::new(pool)
+    Ok(tokio::sync::Mutex::new(pool))
 }
 
 /// 运行所有迁移 SQL
