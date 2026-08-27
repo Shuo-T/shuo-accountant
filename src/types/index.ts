@@ -1,3 +1,4 @@
+/** 分类选项，用于下拉选择等场景（仅包含展示所需字段） */
 export interface CategoryOption {
   id: string;
   name: string;
@@ -6,8 +7,10 @@ export interface CategoryOption {
   color: string | null;
 }
 
+/** 交易类型：支出或收入 */
 export type TransactionType = 'expense' | 'income';
 
+/** 交易选项，用于下拉选择等场景（仅包含展示所需字段） */
 export interface TransactionOption {
   id: string;
   amount: number;
@@ -20,6 +23,7 @@ export interface TransactionOption {
   categoryColor: string | null;
 }
 
+/** 每日统计数据 */
 export interface StatsDaily {
   date: string;
   expense: number;
@@ -27,6 +31,7 @@ export interface StatsDaily {
   balance: number;
 }
 
+/** 分类维度的统计结果 */
 export interface StatsCategory {
   name: string;
   total: number;
@@ -34,6 +39,7 @@ export interface StatsCategory {
   type: TransactionType;
 }
 
+/** 收支汇总数据 */
 export interface Summary {
   expenseTotal: number;
   expenseCount: number;

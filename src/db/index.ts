@@ -123,12 +123,23 @@ export function generateUUID(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
-  // fallback: RFC4122 version 4 compatible
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === 'x' ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+  // fallback: 使用 crypto.getRandomValues 生成密码学安全的随机数（兼容非安全上下文）
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  // RFC4122 version 4 compatible
+  arr[6] = (arr[6]! & 0x0f) | 0x40; // version 4
+  arr[8] = (arr[8]! & 0x3f) | 0x80; // variant 1
+  return [
+    arr[0].toString(16).padStart(2, '0'), arr[1].toString(16).padStart(2, '0'), arr[2].toString(16).padStart(2, '0'), arr[3].toString(16).padStart(2, '0'),
+    '-',
+    arr[4].toString(16).padStart(2, '0'), arr[5].toString(16).padStart(2, '0'),
+    '-',
+    arr[6].toString(16).padStart(2, '0'), arr[7].toString(16).padStart(2, '0'),
+    '-',
+    arr[8].toString(16).padStart(2, '0'), arr[9].toString(16).padStart(2, '0'),
+    '-',
+    arr[10].toString(16).padStart(2, '0'), arr[11].toString(16).padStart(2, '0'), arr[12].toString(16).padStart(2, '0'), arr[13].toString(16).padStart(2, '0'), arr[14].toString(16).padStart(2, '0'), arr[15].toString(16).padStart(2, '0'),
+  ].join('');
 }
 
 // ─── 种子数据 ────────────────────────────────────────────────────────────────
@@ -213,6 +224,12 @@ export async function initDB(): Promise<void> {
 
 // ─── 分类操作 ────────────────────────────────────────────────────────────────
 
+/**
+ * 获取所有分类，支持按交易类型过滤
+ *
+ * @param params - 可选过滤参数，type: 'expense' | 'income'
+ * @returns 按 sortOrder 升序排列的分类列表
+ */
 export async function getCategories(params?: {
   type?: TransactionType;
 }): Promise<Category[]> {
@@ -227,12 +244,24 @@ export async function getCategories(params?: {
   return categories;
 }
 
+/**
+ * 添加新分类，自动生成 UUID
+ *
+ * @param category - 不包含 id 的分类数据
+ * @returns 新分类的 ID
+ */
 export async function addCategory(category: Omit<Category, 'id'>): Promise<string> {
   const id = generateUUID();
   await db.categories.add({ ...category, id });
   return id;
 }
 
+/**
+ * 更新分类的指定字段（名称、图标、颜色等）
+ *
+ * @param id - 分类 ID
+ * @param updates - 需要更新的字段
+ */
 export async function updateCategory(id: string, updates: Partial<Category>): Promise<void> {
   await db.categories.update(id, updates);
 }
@@ -247,6 +276,11 @@ export async function reorderCategories(orderedIds: string[]): Promise<void> {
   }
 }
 
+/**
+ * 删除指定分类（仅支持无子分类的一级分类）
+ *
+ * @param id - 要删除的分类 ID
+ */
 export async function deleteCategory(id: string): Promise<void> {
   await db.categories.delete(id);
 }
@@ -335,18 +369,33 @@ export async function getTransactions(params?: {
   });
 }
 
+/**
+ * 添加交易记录，自动生成 UUID
+ *
+ * @param transaction - 交易记录数据
+ * @returns 新记录的 ID
+ */
 export async function addTransaction(transaction: TransactionRaw): Promise<string> {
   const id = generateUUID();
   await db.transactions.add({ ...transaction, id });
   return id;
 }
 
+/**
+ * 删除指定交易记录
+ *
+ * @param id - 交易记录 ID
+ */
 export async function deleteTransaction(id: string): Promise<void> {
   await db.transactions.delete(id);
 }
 
 // ─── 兼容旧名称 ────────────────────────────────────────────────────────────────
 // 保留旧的 Expense 别名，便于逐步迁移
+
+/**
+ * @deprecated 请使用 getTransactions 代替
+ */
 export async function getExpenses(params?: {
   categoryId?: string;
   startDate?: string;
@@ -355,16 +404,28 @@ export async function getExpenses(params?: {
   return getTransactions({ ...params, type: 'expense' });
 }
 
+/**
+ * @deprecated 请使用 addTransaction 代替
+ */
 export async function addExpense(expense: TransactionRaw): Promise<string> {
   return addTransaction({ ...expense, type: 'expense' });
 }
 
+/**
+ * @deprecated 请使用 deleteTransaction 代替
+ */
 export async function deleteExpense(id: string): Promise<void> {
   return deleteTransaction(id);
 }
 
 // ─── 统计操作 ────────────────────────────────────────────────────────────────
 
+/**
+ * 获取每日收支统计数据
+ *
+ * @param params - 可选的日期范围过滤
+ * @returns 按日期升序排列的每日统计列表
+ */
 export async function getDailyStats(params?: {
   startDate?: string;
   endDate?: string;
@@ -397,6 +458,12 @@ export async function getDailyStats(params?: {
   return result;
 }
 
+/**
+ * 获取各分类的支出/收入汇总统计
+ *
+ * @param params - 可选的日期范围过滤
+ * @returns 按总金额降序排列的分类统计列表
+ */
 export async function getCategoryStats(params?: {
   startDate?: string;
   endDate?: string;
@@ -419,6 +486,12 @@ export async function getCategoryStats(params?: {
     .sort((a, b) => b.total - a.total);
 }
 
+/**
+ * 获取收支汇总数据（总支出、总收入、结余等）
+ *
+ * @param params - 可选的日期范围过滤
+ * @returns 汇总统计结果
+ */
 export async function getSummary(params?: {
   startDate?: string;
   endDate?: string;
@@ -440,6 +513,12 @@ export async function getSummary(params?: {
   return { expenseTotal, expenseCount, incomeTotal, incomeCount, balance: incomeTotal - expenseTotal };
 }
 
+/**
+ * 获取一级分类（大类）的汇总统计
+ *
+ * @param params - 可选的日期范围过滤
+ * @returns 按总金额降序排列的大类统计列表
+ */
 export async function getGroupStats(params?: {
   startDate?: string;
   endDate?: string;

@@ -3,6 +3,10 @@ use super::db::DbPool;
 
 // ─── Category commands ───────────────────────────────────────────────────────
 
+/// 查询所有分类，按排序权重升序排列
+///
+/// # 返回
+/// 完整的分类列表（含一级和二级分类）
 #[tauri::command]
 pub async fn list_categories(pool: tauri::State<'_, DbPool>) -> Result<Vec<Category>, String> {
     let pool = pool.lock().await;
@@ -18,6 +22,17 @@ pub async fn list_categories(pool: tauri::State<'_, DbPool>) -> Result<Vec<Categ
     Ok(categories)
 }
 
+/// 添加新分类，自动生成 UUID
+///
+/// # 参数
+/// - `pool`: 数据库连接池
+/// - `name`: 分类名称
+/// - `parent_id`: 可选，父分类 ID（为 None 时表示一级分类）
+/// - `icon`: 可选，图标名称（Lucide 图标名）
+/// - `color`: 可选，分类颜色（十六进制）
+///
+/// # 返回
+/// 插入后完整的分类数据
 #[tauri::command]
 pub async fn add_category(
     pool: tauri::State<'_, DbPool>,
@@ -50,6 +65,17 @@ pub async fn add_category(
     Ok(category)
 }
 
+/// 更新分类的名称、图标和颜色
+///
+/// # 参数
+/// - `pool`: 数据库连接池
+/// - `id`: 要更新的分类 ID
+/// - `name`: 新的分类名称
+/// - `icon`: 可选，新的图标名称
+/// - `color`: 可选，新的颜色
+///
+/// # 返回
+/// 更新后完整的分类数据
 #[tauri::command]
 pub async fn update_category(
     pool: tauri::State<'_, DbPool>,
@@ -80,6 +106,15 @@ pub async fn update_category(
     Ok(category)
 }
 
+/// 删除指定分类（仅支持无关联支出记录的二级分类）
+///
+/// # 参数
+/// - `pool`: 数据库连接池
+/// - `id`: 要删除的分类 ID
+///
+/// # 错误
+/// - 如果删除的是一级分类，返回错误提示
+/// - 如果该分类下仍有支出记录，返回错误提示
 #[tauri::command]
 pub async fn delete_category(pool: tauri::State<'_, DbPool>, id: String) -> Result<(), String> {
     let pool = pool.lock().await;
