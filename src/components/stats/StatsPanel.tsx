@@ -337,8 +337,8 @@ export default function StatsPanel() {
                 width={50}
               />
               <Tooltip
-                formatter={((value: unknown, name: string) => [`¥${Number(value).toFixed(2)}`, name]) as any}
-                labelFormatter={(label: unknown) => label ? `日期：${label}` : ''}
+                formatter={((value, name) => [`¥${Number(value ?? 0).toFixed(2)}`, name])}
+                labelFormatter={(label) => label ? `日期：${label}` : ''}
                 contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
               />
               {linesVisible.expense && (
@@ -651,17 +651,17 @@ export default function StatsPanel() {
                 width={50}
               />
               <Tooltip
-                formatter={((value: unknown, name: string) => [`¥${Number(value).toFixed(2)}`, name]) as any}
+                formatter={((value, name) => [`¥${Number(value ?? 0).toFixed(2)}`, name])}
                 contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px' }}
               />
               <Bar
                 dataKey="total"
-                fill={(((props: any) => props.payload.type === 'income' ? '#22c55e' : '#ef4444')) as any}
+                fill="#ef4444"
                 radius={[4, 4, 0, 0]}
                 name="金额"
-                onDoubleClick={((data: any) => {
+                onDoubleClick={(data: { name?: string }) => {
                   if (data?.name) handleChartDoubleClick(data);
-                }) as any}
+                }}
               />
             </BarChart>
           </ResponsiveContainer>

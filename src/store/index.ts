@@ -176,6 +176,9 @@ interface StatsState {
   setChartType: (type: 'expense' | 'income') => void;
 }
 
+/**
+ * 将 Date 对象格式化为 YYYY-MM-DD 字符串（本地时区）
+ */
 function formatLocalDate(date: Date): string {
   return [
     date.getFullYear(),
@@ -184,6 +187,14 @@ function formatLocalDate(date: Date): string {
   ].join('-');
 }
 
+/**
+ * 根据周期类型计算对应的开始日期和结束日期
+ *
+ * @param period - 时间周期（day/week/month/quarter/half/year/custom/all）
+ * @param customStart - 自定义开始日期（仅 period='custom' 时使用）
+ * @param customEnd - 自定义结束日期（仅 period='custom' 时使用）
+ * @returns { startDate, endDate } 格式的日期范围
+ */
 function computeRange(period: Period, customStart?: string, customEnd?: string): { startDate: string; endDate: string } {
   const now = new Date();
   const today = formatLocalDate(now);
@@ -228,6 +239,9 @@ function computeRange(period: Period, customStart?: string, customEnd?: string):
   }
   return { startDate: '', endDate: '' };
 }
+
+// 导出供测试使用
+export { formatLocalDate, computeRange };
 
 export const useStatsStore = create<StatsState>((set, get) => ({
   daily: [],
