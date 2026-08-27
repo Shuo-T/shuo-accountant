@@ -24,3 +24,9 @@ src-tauri/gen/schemas
 *.njsproj
 *.sln
 *.sw?
+
+# AI assistant
+.claude/
+
+# Test coverage
+coverage/
