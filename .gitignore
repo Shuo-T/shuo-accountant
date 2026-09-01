@@ -25,8 +25,9 @@ src-tauri/gen/schemas
 *.sln
 *.sw?
 
-# AI assistant
-.claude/
+# AI assistant - 运行时通行证标记文件
+.claude/.check-pass
+.claude/.check-fail
 
 # Test coverage
 coverage/
